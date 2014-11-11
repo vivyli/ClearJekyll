@@ -21,8 +21,8 @@ body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,form,fieldset,p,blockquote,th,t
 /* @end */
 
 body {
-	font-family: Palatino, georgia, "times new roman", serif;
-	background-color: whitesmoke;
+	font-family: "PT Sans","Helvetica Neue",Helvetica,Arial,"Hiragino Sans GB","Microsoft YaHei",sans-serif;
+	background-color: white;
 	background-position: center -18em;
 	background-repeat: repeat-x; 
 }
@@ -32,7 +32,7 @@ img { -ms-interpolation-mode:bicubic; }
 
 /* IE6 ignores this and uses default size of 16pt */
 html>body { font-size:16px; }
-p { margin: 0 0 1.5em 0; text-align: justify; }
+p { margin-bottom:0.65em; text-align: justify; }
 
 a { text-decoration: none; color: #339; }
 a:hover { text-decoration: underline; color: #33f; }
@@ -45,7 +45,7 @@ h1,h2,h3,h4 {
 	font-size:1.5em; 
 	font-weight: normal; 
 	clear: left; 	
-	font-family: 'lucida grande', sans-serif; 
+	font-family: inherit; 
 }
 h1 { margin-bottom: 1em; }
 h2 {
@@ -53,6 +53,11 @@ h2 {
 	line-height: 1.5em;
 	margin:1.5em 0 1.5em 0;
 	font-weight:bold;
+}
+
+h1.emphnext{
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5em
 }
 
 hr { 
@@ -65,7 +70,7 @@ hr {
 sup { line-height: 1ex; }
 
 #site {
-	max-width: 46em;
+	max-width: 60em;
 	margin: 1.5em auto 3em auto;
 	line-height:1.5em;
 }
@@ -75,6 +80,7 @@ sup { line-height: 1ex; }
 /*	background-image: url(grid.png); */
 	padding: 3em 3em 1.5em 3em;
 	border: 1px solid #ccc;
+    margin-top: 1.5em;
 }
 
 /* More experimental CSS3 features */
@@ -194,20 +200,20 @@ ul.compact li a {
 /* @end */
 
 /* @group Header */
-#header, #header a { color: silver; }
+#header, #header a { color: black; }
 #header .hover { color: transparent; }
 #header:hover a { color: black; text-shadow: #aaa 2px 2px 3px;}
 #header:hover a:hover { text-decoration: none; }
 #header a:hover .hover { color: silver; }
 #header {
 	position: relative;
-	font-variant: small-caps;
+	/*font-variant: small-caps;*/
 	line-height: 1em;
 	margin-top: .5em;
 	margin-bottom: 0;
 }
 #header h1 {
-	font-family: Palatino, georgia, "times new roman", serif;
+	font-family: inherit;
 	margin-bottom: 0;
 	line-height: 0.9em;
 	display: block;
@@ -241,6 +247,11 @@ ul.compact li a {
 }
 #header:hover .byline a { color: silver; text-shadow: none; }
 #header:hover .byline a:hover { color: black; text-shadow: #aaa 1px 1px 2px;}
+
+a#title{
+    font-weight: bolder;
+    font-size: larger;
+} 
 
 /* @group Twitter */
 #twitter_update_list { display: inline; margin: 0; }
@@ -433,6 +444,20 @@ div.LTitem { display: inline; margin-right: 0.7em; }
 div.LTprovided { display: none; }
 /* @end */
 
+span.date {
+    font-size: 0.7em;
+    font-style: normal;
+    float: right;
+}
+a.ntitle {
+    font-size: 0.9em;
+}
+
+h3.ntitle{
+    margin-bottom: 0.5em;
+}
+
+
 /* @group Last.fm */
 #lastfm a { margin-right: 0.7em; }
 /* @end */
@@ -454,7 +479,7 @@ p.delicious-extended:before { content: ' — '; }
 #footer {
 	margin-top: 0;
 	color: grey;
-	font-size: 87.5%;
+	font-size: 100%;
 	line-height: 1.3em;
 }
 #footer address {
@@ -463,8 +488,8 @@ p.delicious-extended:before { content: ' — '; }
 	text-align: right;
 }
 #footer a {
-	font-variant: small-caps;
-	font-style: normal;
+	/*font-variant: small-caps;*/
+	font-style: italic;
 	color: #77d;
 	text-decoration: none;
 }
@@ -547,3 +572,12 @@ img.maruku-png { }
 	color:#FFF;
 }
 
+.post {
+    margin-bottom:2em;
+}
+
+span.readmore {
+    border: 1px dashed #ccc;
+    background: #eee;
+    padding: 3px 6px;
+}
