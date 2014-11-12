@@ -8,6 +8,9 @@ http://chunmato.github.io/rss.xml
 http://chunmato.github.io/sitemap.txt
 http://chunmato.github.io/tags.html
 
-http://chunmato.github.io/jekyll/update/2014/11/09/welcome-to-jekyll
-http://chunmato.github.io/2014/02/14/migrating-to-octopress
-http://chunmato.github.io/lessons/2011/12/29/jekyll-introduction
+http://chunmato.github.io/c++/2012/08/14/folly-overview
+http://chunmato.github.io/idea/2012/06/16/remote-control-and-migration
+http://chunmato.github.io/2012/06/15/one-hour-in-lab
+http://chunmato.github.io/java/2012/03/15/reading-java
+http://chunmato.github.io/2011/05/20/activemq-android-client
+http://chunmato.github.io/algorithm/2010/12/12/auto-language-detecting

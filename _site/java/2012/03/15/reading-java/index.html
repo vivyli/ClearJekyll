@@ -1,0 +1,250 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <title>Java的一些读书笔记</title>
+   <meta name="author" content="chunmato" />
+
+   <link rel="start" href="/" />
+
+	
+	
+	
+  	<link rel="alternate" type="application/atom+xml" href="http://feeds.feedburner.com/feedname" title="RSS feed" />
+	
+	
+
+   <!-- syntax highlighting CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/syntax.css" type="text/css" />
+
+   <!-- Homepage CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/screen.css" type="text/css" />
+
+</head>
+<body>
+<div id="site">
+  
+  <div id="header">
+    <h1>
+    	<a href="/" title="Notebook" id="title">Notebook</a>
+    	<!--span class="byline">&larr; <a href="/">chunmato</a></span-->
+    </h1>
+    <ul class="nav">
+      <li><a class="home" href="/">Home</a></li>
+      <li><a  href="/archive.html">Archive</a></li>
+      <!--li><a  href="/pages.html">Pages</a></li-->
+      <li><a  href="/categories.html">Categories</a></li>
+      <li><a  href="/tags.html">Tags</a></li>
+    </ul>
+  </div>
+
+  
+<div id="page">
+	
+  <h1 class="emphnext">Java的一些读书笔记</h1>
+  <ul class="tag_box inline">
+  
+  
+
+
+  
+     
+    	<li><a href="/tags.html#java-ref">java <span>1</span></a></li>
+    
+  
+
+
+
+  </ul>
+
+  
+<p>Java的GC</p>
+
+<p><strong>如何判断对象是否可以被GC？</strong></p>
+
+<p>主要有两个算法：1）引用计数法；2）根搜索法；</p>
+
+<p>引用计数法是指对象每被引用1次，对象中的引用计数器加1，引用失效时，计数器减1，直到计数器为0的时候，对象被标记为可回收。</p>
+
+<p>根搜索法是指从GC Roots开始建立一个引用的图，当一个对象到GC Roots的路径不存在时，对象可以标记为可回收，JAVA中使用的是这种方法。</p>
+
+<!-- more -->
+
+<p><strong>对象GC的过程？</strong></p>
+
+<p>当对象被标记为可回收时，JVM判断判断对象是否有必要执行finalize方法（只有当finalize方法未被执行过的时候才被认为需要执行finalize方法）。</p>
+
+<p>如需要执行finalize方法，把对象加入到F-Queue中，稍后由虚拟机调用其finalize方法，如对象调用完之后仍旧是被标记为可回收，这块对象所占的内存空间就被虚拟机回收了。</p>
+
+<p><strong>内存回收的基本算法？</strong></p>
+
+<p>主要有四个算法：1）标记-清除算法；2）复制算法；3）标记-整理算法；4）分代收集算法。</p>
+
+<p>标记-清除算法，是指直接回收被标记的内存块。会产生许多不连续的内存块碎片。</p>
+
+<p>复制算法，把内存块分为大小相等的两个区，只使用其中1个区，当一块内存块用完时，把每块复制到另外一个区，并且使用的内存块处于连续的空间。</p>
+
+<p>标记-整理算法，是指内存块标记完之后，让所有使用的内存块向一端移动，然后清理掉端界意外的内存。</p>
+
+<p>分代收集算法，是指把JAVA堆根据对象存活周期分为新生代和老生代，根据每个代的特点采用适当的手机算法。</p>
+
+<p><strong>各种垃圾收集器？</strong></p>
+
+<p>主要有：1）Serial；2）ParNew；3）Parallel Scavenge；4）Serial Old；5）Parallel Old；6）CMS(Concurrent Mark Sweep)；7）G1(Garbage First)；</p>
+
+<p><strong>Java的引用</strong></p>
+
+<p>Java中引用主要有四类，分别是：1）Strong Reference；2）Soft Reference；3）Weak Reference；4）Phantom Reference；主要跟Java的GC有关。</p>
+
+<p>可以从java.lang.ref包里可以看到有几个类：SoftReference、WeakReference、PhantomReference，分别对应后面三种引用。</p>
+
+<p>Strong Reference，就是一般意义上的引用，类似于Object obj = new Object的引用，只要Strong Reference存在，GC就不会回收这个对象。</p>
+
+<p>Soft Reference，被Soft Reference引用的对象，只有当系统将要发生内存溢出一场之前，才会被回收这块内存。</p>
+
+<p>Weak Reference，被Weak Reference引用的对象，能生存到下次垃圾收集之前，可以使用一段代码解释。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">checkNull</span><span class="o">(</span><span class="n">Object</span> <span class="n">obj</span><span class="o">)</span>
+<span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">obj</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Dead&quot;</span><span class="o">);</span>
+    <span class="k">else</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Alive&quot;</span><span class="o">);</span>
+<span class="o">}</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Throwable</span>
+<span class="o">{</span>
+    <span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Object</span><span class="o">();</span>
+    <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">wr</span> <span class="o">=</span> <span class="k">new</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;(</span><span class="n">obj</span><span class="o">);</span>
+    <span class="n">checkNull</span><span class="o">(</span><span class="n">wr</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="n">checkNull</span><span class="o">(</span><span class="n">wr</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">gc</span><span class="o">();</span>
+    <span class="n">checkNull</span><span class="o">(</span><span class="n">wr</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
+<span class="o">}</span></code></pre></div>
+
+<p>输出的是：</p>
+
+<p>Alive</p>
+
+<p>Alive</p>
+
+<p>Dead</p>
+
+<p>也就是说只有调用了GC只有，Weak Reference才失效，get不到任何东西，内存才被回收，而在调用GC之前，即使obj=null了，建立Weak Reference的对象还是能get到的。</p>
+
+<p>Phontom Reference，对对象的生存时间产生任何影响，只是希望能在GC回收内存块的时候收到一个系统通知。</p>
+
+<p><strong>犄角旮旯的关键字</strong></p>
+
+<p>主要有3个犄角旮旯的关键字：strictfp、transient、native</p>
+
+<p>strictfp</p>
+
+<p>浮点数计算方法相关的关键词，可用于修饰类、接口和方法，在此关键词内的方法的浮点数计算都是符合IEEE 754标准的，可以保证可移植性。</p>
+
+<p>transient</p>
+
+<p>序列化相关的关键词，用于修饰用来Serializable类属性，这个属性在类序列化的时候不被序列化。如</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Foo</span> <span class="kd">implements</span> <span class="n">Serializable</span> <span class="o">{</span> 
+
+    <span class="kd">public</span> <span class="kd">transient</span> <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> 
+    <span class="kd">public</span> <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> 
+<span class="o">}</span></code></pre></div>
+
+<p>当改变a和b的值之后序列化，再从序列化文件中读取这个类之后，b的值为序列化之前的值，而a是0。</p>
+
+<p>native</p>
+
+<p>用于修饰Java类的方法，表示这个方法是原生的方法，是调用被编译后的库文件的。</p>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">class</span> <span class="nc">Prompt</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="kd">native</span> <span class="n">String</span> <span class="nf">getLine</span><span class="o">(</span><span class="n">String</span> <span class="n">prompt</span><span class="o">);</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span> <span class="n">args</span><span class="o">[])</span> <span class="o">{</span>
+
+	<span class="n">Prompt</span> <span class="n">p</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Prompt</span><span class="o">();</span>
+	<span class="n">String</span> <span class="n">input</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">getLine</span><span class="o">(</span><span class="s">&quot;Type a line: &quot;</span><span class="o">);</span>
+	<span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;User typed: &quot;</span> <span class="o">+</span> <span class="n">input</span><span class="o">);</span>
+
+    <span class="o">}</span>
+    <span class="kd">static</span> <span class="o">{</span>
+	<span class="n">System</span><span class="o">.</span><span class="na">loadLibrary</span><span class="o">(</span><span class="s">&quot;MyImpOfPrompt&quot;</span><span class="o">);</span>
+
+    <span class="o">}</span>
+
+<span class="o">}</span></code></pre></div>
+
+<p>这些犄角旮旯的关键字目前开发中还没用到</p>
+
+<p>参考：《深入理解Java虚拟机——JVM高级特性与最佳实践》</p>
+
+
+  <address class="signature">
+    <a class="author" href="/">chunmato</a> 
+    <span class="date">15 March 2012</span>
+    <span class="location"></span>
+  </address>
+  
+  <div class="prev-next">
+  
+    <a href="/2012/06/15/one-hour-in-lab" class="next" title="实验室一小时">Next Post &rarr;</a>
+  
+  
+    <a href="/2011/05/20/activemq-android-client" class="prev" title="ActiveMQ Android Client">&larr; Earlier Post</a>
+  
+  </div>
+  
+</div><!-- End Page -->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'jekyllbootstrap'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+
+
+  
+  <div id="footer">
+  	<address>
+  		<span class="engine">
+  			Powered by <a href="http://github.com/mojombo/jekyll/" title="A static, minimalist CMS">Jekyll</a>
+  		</span>
+  	</address>
+  </div>
+  
+</div>
+
+<!--[if IE 6]>
+<script type="text/javascript"> 
+	/*Load jQuery if not already loaded*/ if(typeof jQuery == 'undefined'){ document.write("<script type=\"text/javascript\"   src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js\"></"+"script>"); var __noconflict = true; } 
+	var IE6UPDATE_OPTIONS = {
+		icons_path: "http://static.ie6update.com/hosted/ie6update/images/"
+	}
+</script>
+<script type="text/javascript" src="http://static.ie6update.com/hosted/ie6update/ie6update.js"></script>
+<![endif]-->
+
+  
+</body>
+</html>
+

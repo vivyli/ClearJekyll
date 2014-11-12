@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <title>ActiveMQ Android Client</title>
+   <meta name="author" content="chunmato" />
+
+   <link rel="start" href="/" />
+
+	
+	
+	
+  	<link rel="alternate" type="application/atom+xml" href="http://feeds.feedburner.com/feedname" title="RSS feed" />
+	
+	
+
+   <!-- syntax highlighting CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/syntax.css" type="text/css" />
+
+   <!-- Homepage CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/screen.css" type="text/css" />
+
+</head>
+<body>
+<div id="site">
+  
+  <div id="header">
+    <h1>
+    	<a href="/" title="Notebook" id="title">Notebook</a>
+    	<!--span class="byline">&larr; <a href="/">chunmato</a></span-->
+    </h1>
+    <ul class="nav">
+      <li><a class="home" href="/">Home</a></li>
+      <li><a  href="/archive.html">Archive</a></li>
+      <!--li><a  href="/pages.html">Pages</a></li-->
+      <li><a  href="/categories.html">Categories</a></li>
+      <li><a  href="/tags.html">Tags</a></li>
+    </ul>
+  </div>
+
+  
+<div id="page">
+	
+  <h1 class="emphnext">ActiveMQ Android Client</h1>
+  <ul class="tag_box inline">
+  
+  
+
+
+  
+     
+    	<li><a href="/tags.html#android-ref">android <span>1</span></a></li>
+    
+  
+
+
+
+  </ul>
+
+  
+<p><a href="http://activemq.apache.org/">ActiveMQ</a>是一个JMS的消息队列的一种实现，在高并发的服务端用的较多，据称能够支持每秒20000的并发数据访问。</p>
+
+<p>他实现了JMS标准的基本操作，如点对点的消息收发，发布/订阅消息等等，并且支持了许多协议，如Openwire、REST、Stomp、XMPP等等，因此支持了多语言和多平台，它自带的Java库实现了openwire和stomp的访问，但是如要手机端（如Android）对JMS的支持很差（或者还不支持？），因此对于手机端来说操作ActiveMQ不得不使用XMPP或者REST。</p>
+
+<!-- more -->
+
+<p>XMPP我尝试过，使用<a href="http://www.igniterealtime.org/projects/smack/index.jsp">smack</a>，smack是一个XMPP的Java库，原本是用来做IM开发的（作为同一系列的<a href="http://www.igniterealtime.org/projects/spark/index.jsp">spark</a>是XMPP的IM客户端，基于smack，<a href="http://www.igniterealtime.org/projects/openfire/index.jsp">Openfire</a>是XMPP的服务器，因此spark+openfire能够搭建一个IM系统，同样ActiveMQ也可以作为XMPP的服务器，ActiveMQ+spark也可以搭建一个IM系统。）使用smack能够连接ActiveMQ，并建立一个Topic，向Topic队列发送消息，但是一直没有找到如何建立Queue，生产消息和消费消息。有人还特意为Android写了个<a href="http://code.google.com/p/asmack/">asmack</a>。</p>
+
+<p>我最后还是采用了最简单的REST，因为这基本上是HTTP的GET/POST来做，不需要任何第三方库。</p>
+
+<p>我需要的操作有3个：</p>
+
+<ul>
+  <li>
+    <p>produce：向一个消息队列中发送消息。</p>
+  </li>
+  <li>
+    <p>consume：消费一个队列中的一条消息。</p>
+  </li>
+  <li>
+    <p>unsubscribe：撤销一个队列的一个conumer。</p>
+  </li>
+</ul>
+
+<p>实现比较简单，produce操作即向http://localhost:8161/demo/message POST一条HTTP请求，POST的数据如：</p>
+
+<ul>
+  <li>
+    <p>destination：队列名称</p>
+  </li>
+  <li>
+    <p>type：队列类型，queue或者topic</p>
+  </li>
+  <li>
+    <p>TimeToLive：消息在队列中的有效期</p>
+  </li>
+  <li>
+    <p>body：消息的内容</p>
+  </li>
+</ul>
+
+<p>其他还有一些能够设置，不过用处不是很大。</p>
+
+<p>consume操作则是向http://localhost:8161/demo/message GET一条HTTP请求，一般格式如：</p>
+
+<p>http://localhost:8161/demo/message/destination?type=queue&amp;clientId=cid&amp;readTimeout=timeout</p>
+
+<ul>
+  <li>
+    <p>destination：想要消费数据的队列名称</p>
+  </li>
+  <li>
+    <p>type：queue或者topic</p>
+  </li>
+  <li>
+    <p>clientId：客户端的ID，不同的ID对应不同的consumer</p>
+  </li>
+  <li>
+    <p>readTimeout：读队列等待的时长，超过时长请求等待结束</p>
+  </li>
+</ul>
+
+<p>unsubscribe操作指的是取消队列的consumer，两个consumer同时在consume一个队列时REST请求似乎没有响应，因此在consume一条消息之后需要移除这个consumer，而这个操作是到了ActiveMQ 5.4.0之后才有这个操作。做法是向http://localhost:8161/demo/message POST一条请求，其中数据为：</p>
+
+<ul>
+  <li>
+    <p>action：为unsubscribe</p>
+  </li>
+  <li>
+    <p>clientId：要移除的consumer的id</p>
+  </li>
+</ul>
+
+<p>这样手机端就可以与ActiveMQ通信。</p>
+
+
+  <address class="signature">
+    <a class="author" href="/">chunmato</a> 
+    <span class="date">20 May 2011</span>
+    <span class="location"></span>
+  </address>
+  
+  <div class="prev-next">
+  
+    <a href="/java/2012/03/15/reading-java" class="next" title="Java的一些读书笔记">Next Post &rarr;</a>
+  
+  
+    <a href="/algorithm/2010/12/12/auto-language-detecting" class="prev" title="自动语言/编码检测算法">&larr; Earlier Post</a>
+  
+  </div>
+  
+</div><!-- End Page -->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'jekyllbootstrap'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+
+
+  
+  <div id="footer">
+  	<address>
+  		<span class="engine">
+  			Powered by <a href="http://github.com/mojombo/jekyll/" title="A static, minimalist CMS">Jekyll</a>
+  		</span>
+  	</address>
+  </div>
+  
+</div>
+
+<!--[if IE 6]>
+<script type="text/javascript"> 
+	/*Load jQuery if not already loaded*/ if(typeof jQuery == 'undefined'){ document.write("<script type=\"text/javascript\"   src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js\"></"+"script>"); var __noconflict = true; } 
+	var IE6UPDATE_OPTIONS = {
+		icons_path: "http://static.ie6update.com/hosted/ie6update/images/"
+	}
+</script>
+<script type="text/javascript" src="http://static.ie6update.com/hosted/ie6update/ie6update.js"></script>
+<![endif]-->
+
+  
+</body>
+</html>
+

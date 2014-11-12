@@ -1,0 +1,197 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <title>Folly Overview</title>
+   <meta name="author" content="chunmato" />
+
+   <link rel="start" href="/" />
+
+	
+	
+	
+  	<link rel="alternate" type="application/atom+xml" href="http://feeds.feedburner.com/feedname" title="RSS feed" />
+	
+	
+
+   <!-- syntax highlighting CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/syntax.css" type="text/css" />
+
+   <!-- Homepage CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/screen.css" type="text/css" />
+
+</head>
+<body>
+<div id="site">
+  
+  <div id="header">
+    <h1>
+    	<a href="/" title="Notebook" id="title">Notebook</a>
+    	<!--span class="byline">&larr; <a href="/">chunmato</a></span-->
+    </h1>
+    <ul class="nav">
+      <li><a class="home" href="/">Home</a></li>
+      <li><a  href="/archive.html">Archive</a></li>
+      <!--li><a  href="/pages.html">Pages</a></li-->
+      <li><a  href="/categories.html">Categories</a></li>
+      <li><a  href="/tags.html">Tags</a></li>
+    </ul>
+  </div>
+
+  
+<div id="page">
+	
+  <h1 class="emphnext">Folly Overview</h1>
+  <ul class="tag_box inline">
+  
+  
+
+
+  
+     
+    	<li><a href="/tags.html#c++-ref">c++ <span>1</span></a></li>
+    
+  
+
+
+
+  </ul>
+
+  
+<p>本文从整体上对Folly做一个简单的介绍，主要参考GitHub上Folly的文档，以及我读代码下来的感觉。</p>
+
+<p><strong>Folly是什么</strong></p>
+
+<p>它是Facebook Open-source Library的简称，是一个在今年的6月份开源的基于C++11的基础库，作为对STL和boost的补充和增强，并非是替代，也就是说是实现了一些STL和boost中没有的组件，也对STL和boost中的部分组件做了性能上的增强。</p>
+
+<!-- more -->
+
+<p>值得一提的是它的主要作者Andrei Alexandrescu，写过《Modern C++ Design》，精于模板编程，目前已经43岁，还奋战在coding的第一线，我想这样的人国内少有了吧。Folly代码写的非常漂亮，逻辑非常清晰，也很少有令人费解的写法，读起来比较舒服。</p>
+
+<p><strong>Folly的特点</strong></p>
+
+<p>高效</p>
+
+<p>一方面在通用的数据结构结构中对算法速度和内存上做优化，相比于STL和boos中的组件（如string、vector）有较大的提高；</p>
+
+<p>另一方面实现了在特定场合（例如容器中的元素个数较少或者已知的前提下）具有较好的性能。</p>
+
+<p>易用</p>
+
+<p>组件相比以前的更加易用，如ThreadLocal；另外有借鉴了其他语言语法上的优势，如实现了类似于java的synronized关键字的SYNCHRONIZED宏，python的格式化Format工具等。</p>
+
+<p><strong>Folly中有什么</strong></p>
+
+<p>Folly的代码量并不多，50几个头文件，10几个cpp文件，多的2000多行，少的也就几行。</p>
+
+<p>主要包含了40几个组件，大致包括：</p>
+
+<p>内存管理：如Arena</p>
+
+<p>高性能的数据结构：如string、vector</p>
+
+<p>有用的数据结构：如直方图、延时队列</p>
+
+<p>多线程相关的优化：如线程本地内存、旋转锁</p>
+
+<p>工具：如Hash的实现</p>
+
+<p>我对组件做了一个简单的分类，接下来就根据这个顺序来逐个写</p>
+
+<ul>
+  <li>
+    <p>内存管理：Arena ThreadCachedArena</p>
+  </li>
+  <li>
+    <p>字符串：FBString Range Malloc</p>
+  </li>
+  <li>
+    <p>向量：FBVector Traits small_vector sorted_vector_types</p>
+  </li>
+  <li>
+    <p>多线程数据结构：ThreadLocal AtomicHashArray AtomicHashMap ThreadCachedInt ProducerConsumerQueue ConcurrentSkipList</p>
+  </li>
+  <li>
+    <p>多线程锁：SmallLocks RWSpinLock</p>
+  </li>
+  <li>
+    <p>整型编码：DiscriminatedPtr GroupVarint PackedSyncPtr</p>
+  </li>
+  <li>
+    <p>有用的数据结构：dynamic Histogram TimeoutQueue</p>
+  </li>
+  <li>
+    <p>工具：Bits Conv Format String Unicode Synchronized json Random Hash</p>
+  </li>
+  <li>
+    <p>简化编程：eventfd Foreach IntrusiveList Likely Preprocessor ScopeGuard StlAllocator</p>
+  </li>
+</ul>
+
+
+  <address class="signature">
+    <a class="author" href="/">chunmato</a> 
+    <span class="date">14 August 2012</span>
+    <span class="location"></span>
+  </address>
+  
+  <div class="prev-next">
+  
+  
+    <a href="/idea/2012/06/16/remote-control-and-migration" class="prev" title="遥控器和迁移">&larr; Earlier Post</a>
+  
+  </div>
+  
+</div><!-- End Page -->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'jekyllbootstrap'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+
+
+  
+  <div id="footer">
+  	<address>
+  		<span class="engine">
+  			Powered by <a href="http://github.com/mojombo/jekyll/" title="A static, minimalist CMS">Jekyll</a>
+  		</span>
+  	</address>
+  </div>
+  
+</div>
+
+<!--[if IE 6]>
+<script type="text/javascript"> 
+	/*Load jQuery if not already loaded*/ if(typeof jQuery == 'undefined'){ document.write("<script type=\"text/javascript\"   src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js\"></"+"script>"); var __noconflict = true; } 
+	var IE6UPDATE_OPTIONS = {
+		icons_path: "http://static.ie6update.com/hosted/ie6update/images/"
+	}
+</script>
+<script type="text/javascript" src="http://static.ie6update.com/hosted/ie6update/ie6update.js"></script>
+<![endif]-->
+
+  
+</body>
+</html>
+

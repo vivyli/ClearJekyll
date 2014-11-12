@@ -5,479 +5,388 @@
         <description>Notebook - chunmato</description>
         <link>http://chunmato.github.io</link>
         <link>http://chunmato.github.io</link>
-        <lastBuildDate>2014-11-11T19:29:43+08:00</lastBuildDate>
-        <pubDate>2014-11-11T19:29:43+08:00</pubDate>
+        <lastBuildDate>2014-11-13T01:22:07+08:00</lastBuildDate>
+        <pubDate>2014-11-13T01:22:07+08:00</pubDate>
         <ttl>1800</ttl>
 
 
         <item>
-                <title>Welcome to Jekyll!</title>
-                <description>&lt;p&gt;You’ll find this post in your &lt;code&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
-
-&lt;p&gt;To add new posts, simply add a file in the &lt;code&gt;_posts&lt;/code&gt; directory that follows the convention &lt;code&gt;YYYY-MM-DD-name-of-post.ext&lt;/code&gt; and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
-
-&lt;!-- more --&gt;
-
-&lt;p&gt;Jekyll also offers powerful support for code snippets:&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-  &lt;span class=&quot;nb&quot;&gt;puts&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Hi, &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;#{&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;Tom&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;#=&amp;gt; prints &amp;#39;Hi, Tom&amp;#39; to STDOUT.&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-&lt;p&gt;Check out the &lt;a href=&quot;http://jekyllrb.com&quot;&gt;Jekyll docs&lt;/a&gt; for more info on how to get the most out of Jekyll. File all bugs/feature requests at &lt;a href=&quot;https://github.com/jekyll/jekyll&quot;&gt;Jekyll’s GitHub repo&lt;/a&gt;. If you have questions, you can ask them on &lt;a href=&quot;https://github.com/jekyll/jekyll-help&quot;&gt;Jekyll’s dedicated Help repository&lt;/a&gt;.&lt;/p&gt;
-
-</description>
-                <link>http://chunmato.github.io/jekyll/update/2014/11/09/welcome-to-jekyll</link>
-                <guid>http://chunmato.github.io/jekyll/update/2014/11/09/welcome-to-jekyll</guid>
-                <pubDate>2014-11-09T07:49:32+08:00</pubDate>
-        </item>
-
-        <item>
-                <title>Migrating To Octopress</title>
-                <description>&lt;p&gt;Finally after much ado, I am moving Gotchacode to Octopress. There are various reasons for doing it.
-I am listing some of them here:&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;There is absolutely no good theme if you are running a technical blog.&lt;/li&gt;
-  &lt;li&gt;Syntax highlighting is pathetic.&lt;/li&gt;
-  &lt;li&gt;I can’t write post in my text editor.&lt;/li&gt;
-  &lt;li&gt;There is no source control.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;!-- more --&gt;
-&lt;p&gt;But I will miss blogspot too. The integrated analytics was best in class and so was the SEO.&lt;/p&gt;
-
-</description>
-                <link>http://chunmato.github.io/2014/02/14/migrating-to-octopress</link>
-                <guid>http://chunmato.github.io/2014/02/14/migrating-to-octopress</guid>
-                <pubDate>2014-02-14T01:37:02+08:00</pubDate>
-        </item>
-
-        <item>
-                <title>Jekyll Introduction</title>
+                <title>Folly Overview</title>
                 <description>
-&lt;p&gt;This Jekyll introduction will outline specifically  what Jekyll is and why you would want to use it.
-Directly following the intro we’ll learn exactly &lt;em&gt;how&lt;/em&gt; Jekyll does what it does.&lt;/p&gt;
+&lt;p&gt;本文从整体上对Folly做一个简单的介绍，主要参考GitHub上Folly的文档，以及我读代码下来的感觉。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Folly是什么&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;它是Facebook Open-source Library的简称，是一个在今年的6月份开源的基于C++11的基础库，作为对STL和boost的补充和增强，并非是替代，也就是说是实现了一些STL和boost中没有的组件，也对STL和boost中的部分组件做了性能上的增强。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
-&lt;h2 id=&quot;overview&quot;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;值得一提的是它的主要作者Andrei Alexandrescu，写过《Modern C++ Design》，精于模板编程，目前已经43岁，还奋战在coding的第一线，我想这样的人国内少有了吧。Folly代码写的非常漂亮，逻辑非常清晰，也很少有令人费解的写法，读起来比较舒服。&lt;/p&gt;
 
-&lt;h3 id=&quot;what-is-jekyll&quot;&gt;What is Jekyll?&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;Folly的特点&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;Jekyll is a parsing engine bundled as a ruby gem used to build static websites from
-dynamic components such as templates, partials, liquid code, markdown, etc. Jekyll is known as “a simple, blog aware, static site generator”.&lt;/p&gt;
+&lt;p&gt;高效&lt;/p&gt;
 
-&lt;h3 id=&quot;examples&quot;&gt;Examples&lt;/h3&gt;
+&lt;p&gt;一方面在通用的数据结构结构中对算法速度和内存上做优化，相比于STL和boos中的组件（如string、vector）有较大的提高；&lt;/p&gt;
 
-&lt;p&gt;This website is created with Jekyll. &lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/Sites&quot;&gt;Other Jekyll websites&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;另一方面实现了在特定场合（例如容器中的元素个数较少或者已知的前提下）具有较好的性能。&lt;/p&gt;
 
-&lt;h3 id=&quot;what-does-jekyll-do&quot;&gt;What does Jekyll Do?&lt;/h3&gt;
+&lt;p&gt;易用&lt;/p&gt;
 
-&lt;p&gt;Jekyll is a ruby gem you install on your local system.
-Once there you can call &lt;code&gt;jekyll --server&lt;/code&gt; on a directory and provided that directory
-is setup in a way jekyll expects, it will do magic stuff like parse markdown/textile files,
-compute categories, tags, permalinks, and construct your pages from layout templates and partials.&lt;/p&gt;
+&lt;p&gt;组件相比以前的更加易用，如ThreadLocal；另外有借鉴了其他语言语法上的优势，如实现了类似于java的synronized关键字的SYNCHRONIZED宏，python的格式化Format工具等。&lt;/p&gt;
 
-&lt;p&gt;Once parsed, Jekyll stores the result in a self-contained static &lt;code&gt;_site&lt;/code&gt; folder.
-The intention here is that you can serve all contents in this folder statically from a plain static web-server.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Folly中有什么&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;You can think of Jekyll as a normalish dynamic blog but rather than parsing content, templates, and tags
-on each request, Jekyll does this once &lt;em&gt;beforehand&lt;/em&gt; and caches the &lt;em&gt;entire website&lt;/em&gt; in a folder for serving statically.&lt;/p&gt;
+&lt;p&gt;Folly的代码量并不多，50几个头文件，10几个cpp文件，多的2000多行，少的也就几行。&lt;/p&gt;
 
-&lt;h3 id=&quot;jekyll-is-not-blogging-software&quot;&gt;Jekyll is Not Blogging Software&lt;/h3&gt;
+&lt;p&gt;主要包含了40几个组件，大致包括：&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Jekyll is a parsing engine.&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;内存管理：如Arena&lt;/p&gt;
 
-&lt;p&gt;Jekyll does not come with any content nor does it have any templates or design elements.
-This is a common source of confusion when getting started.
-Jekyll does not come with anything you actually use or see on your website - you have to make it.&lt;/p&gt;
+&lt;p&gt;高性能的数据结构：如string、vector&lt;/p&gt;
 
-&lt;h3 id=&quot;why-should-i-care&quot;&gt;Why Should I Care?&lt;/h3&gt;
+&lt;p&gt;有用的数据结构：如直方图、延时队列&lt;/p&gt;
 
-&lt;p&gt;Jekyll is very minimalistic and very efficient.
-The most important thing to realize about Jekyll is that it creates a static representation of your website requiring only a static web-server.
-Traditional dynamic blogs like Wordpress require a database and server-side code.
-Heavily trafficked dynamic blogs must employ a caching layer that ultimately performs the same job Jekyll sets out to do; serve static content.&lt;/p&gt;
+&lt;p&gt;多线程相关的优化：如线程本地内存、旋转锁&lt;/p&gt;
 
-&lt;p&gt;Therefore if you like to keep things simple and you prefer the command-line over an admin panel UI then give Jekyll a try.&lt;/p&gt;
+&lt;p&gt;工具：如Hash的实现&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Developers like Jekyll because we can write content like we write code:&lt;/strong&gt;&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;Ability to write content in markdown or textile in your favorite text-editor.&lt;/li&gt;
-  &lt;li&gt;Ability to write and preview your content via localhost.&lt;/li&gt;
-  &lt;li&gt;No internet connection required.&lt;/li&gt;
-  &lt;li&gt;Ability to publish via git.&lt;/li&gt;
-  &lt;li&gt;Ability to host your blog on a static web-server.&lt;/li&gt;
-  &lt;li&gt;Ability to host freely on GitHub Pages.&lt;/li&gt;
-  &lt;li&gt;No database required.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h1 id=&quot;how-jekyll-works&quot;&gt;How Jekyll Works&lt;/h1&gt;
-
-&lt;p&gt;The following is a complete but concise outline of exactly how Jekyll works.&lt;/p&gt;
-
-&lt;p&gt;Be aware that core concepts are introduced in rapid succession without code examples.
-This information is not intended to specifically teach you how to do anything, rather it
-is intended to give you the &lt;em&gt;full picture&lt;/em&gt; relative to what is going on in Jekyll-world.&lt;/p&gt;
-
-&lt;p&gt;Learning these core concepts should help you avoid common frustrations and ultimately
-help you better understand the code examples contained throughout Jekyll-Bootstrap.&lt;/p&gt;
-
-&lt;h2 id=&quot;initial-setup&quot;&gt;Initial Setup&lt;/h2&gt;
-
-&lt;p&gt;After &lt;a href=&quot;/index.html#start-now&quot;&gt;installing jekyll&lt;/a&gt; you’ll need to format your website directory in a way jekyll expects.
-Jekyll-bootstrap conveniently provides the base directory format.&lt;/p&gt;
-
-&lt;h3 id=&quot;the-jekyll-application-base-format&quot;&gt;The Jekyll Application Base Format&lt;/h3&gt;
-
-&lt;p&gt;Jekyll expects your website directory to be laid out like so:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;.
-|-- _config.yml
-|-- _includes
-|-- _layouts
-|   |-- default.html
-|   |-- post.html
-|-- _posts
-|   |-- 2011-10-25-open-source-is-good.markdown
-|   |-- 2011-04-26-hello-world.markdown
-|-- _site
-|-- index.html
-|-- assets
-    |-- css
-        |-- style.css
-    |-- javascripts
-&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;我对组件做了一个简单的分类，接下来就根据这个顺序来逐个写&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;_config.yml&lt;/strong&gt;
-  Stores configuration data.&lt;/p&gt;
+    &lt;p&gt;内存管理：Arena ThreadCachedArena&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;_includes&lt;/strong&gt;
-  This folder is for partial views.&lt;/p&gt;
+    &lt;p&gt;字符串：FBString Range Malloc&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;_layouts&lt;/strong&gt;
-  This folder is for the main templates your content will be inserted into.
-  You can have different layouts for different pages or page sections.&lt;/p&gt;
+    &lt;p&gt;向量：FBVector Traits small_vector sorted_vector_types&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;_posts&lt;/strong&gt;
-  This folder contains your dynamic content/posts.
-  the naming format is required to be &lt;code&gt;@YEAR-MONTH-DATE-title.MARKUP@&lt;/code&gt;.&lt;/p&gt;
+    &lt;p&gt;多线程数据结构：ThreadLocal AtomicHashArray AtomicHashMap ThreadCachedInt ProducerConsumerQueue ConcurrentSkipList&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;_site&lt;/strong&gt;
-  This is where the generated site will be placed once Jekyll is done transforming it.&lt;/p&gt;
+    &lt;p&gt;多线程锁：SmallLocks RWSpinLock&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;assets&lt;/strong&gt;
-  This folder is not part of the standard jekyll structure.
-  The assets folder represents &lt;em&gt;any generic&lt;/em&gt; folder you happen to create in your root directory.
-  Directories and files not properly formatted for jekyll will be left untouched for you to serve normally.&lt;/p&gt;
+    &lt;p&gt;整型编码：DiscriminatedPtr GroupVarint PackedSyncPtr&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;有用的数据结构：dynamic Histogram TimeoutQueue&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;工具：Bits Conv Format String Unicode Synchronized json Random Hash&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;简化编程：eventfd Foreach IntrusiveList Likely Preprocessor ScopeGuard StlAllocator&lt;/p&gt;
   &lt;/li&gt;
 &lt;/ul&gt;
-
-&lt;p&gt;(read more: &lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/Usage&quot;&gt;https://github.com/mojombo/jekyll/wiki/Usage&lt;/a&gt;)&lt;/p&gt;
-
-&lt;h3 id=&quot;jekyll-configuration&quot;&gt;Jekyll Configuration&lt;/h3&gt;
-
-&lt;p&gt;Jekyll supports various configuration options that are fully outlined here:
-(&lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/Configuration&quot;&gt;https://github.com/mojombo/jekyll/wiki/Configuration&lt;/a&gt;)&lt;/p&gt;
-
-&lt;h2 id=&quot;content-in-jekyll&quot;&gt;Content in Jekyll&lt;/h2&gt;
-
-&lt;p&gt;Content in Jekyll is either a post or a page.
-These content “objects” get inserted into one or more templates to build the final output for its respective static-page.&lt;/p&gt;
-
-&lt;h3 id=&quot;posts-and-pages&quot;&gt;Posts and Pages&lt;/h3&gt;
-
-&lt;p&gt;Both posts and pages should be written in markdown, textile, or HTML and may also contain Liquid templating syntax.
-Both posts and pages can have meta-data assigned on a per-page basis such as title, url path, as well as arbitrary custom meta-data.&lt;/p&gt;
-
-&lt;h3 id=&quot;working-with-posts&quot;&gt;Working With Posts&lt;/h3&gt;
-
-&lt;p&gt;&lt;strong&gt;Creating a Post&lt;/strong&gt;
-Posts are created by properly formatting a file and placing it the &lt;code&gt;_posts&lt;/code&gt; folder.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Formatting&lt;/strong&gt;
-A post must have a valid filename in the form &lt;code&gt;YEAR-MONTH-DATE-title.MARKUP&lt;/code&gt; and be placed in the &lt;code&gt;_posts&lt;/code&gt; directory.
-If the data format is invalid Jekyll will not recognize the file as a post. The date and title are automatically parsed from the filename of the post file.
-Additionally, each file must have &lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/YAML-Front-Matter&quot;&gt;YAML Front-Matter&lt;/a&gt; prepended to its content.
-YAML Front-Matter is a valid YAML syntax specifying meta-data for the given file.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Order&lt;/strong&gt;
-Ordering is an important part of Jekyll but it is hard to specify a custom ordering strategy.
-Only reverse chronological and chronological ordering is supported in Jekyll.&lt;/p&gt;
-
-&lt;p&gt;Since the date is hard-coded into the filename format, to change the order, you must change the dates in the filenames.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Tags&lt;/strong&gt;
-Posts can have tags associated with them as part of their meta-data.
-Tags may be placed on posts by providing them in the post’s YAML front matter.
-You have access to the post-specific tags in the templates. These tags also get added to the sitewide collection.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Categories&lt;/strong&gt;
-Posts may be categorized by providing one or more categories in the YAML front matter.
-Categories offer more significance over tags in that they can be reflected in the URL path to the given post.
-Note categories in Jekyll work in a specific way.
-If you define more than one category you are defining a category hierarchy “set”.
-Example:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;---
-title :  Hello World
-categories : [lessons, beginner]
----
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This defines the category hierarchy “lessons/beginner”. Note this is &lt;em&gt;one category&lt;/em&gt; node in Jekyll.
-You won’t find “lessons” and “beginner” as two separate categories unless you define them elsewhere as singular categories.&lt;/p&gt;
-
-&lt;h3 id=&quot;working-with-pages&quot;&gt;Working With Pages&lt;/h3&gt;
-
-&lt;p&gt;&lt;strong&gt;Creating a Page&lt;/strong&gt;
-Pages are created by properly formatting a file and placing it anywhere in the root directory or subdirectories that do &lt;em&gt;not&lt;/em&gt; start with an underscore.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Formatting&lt;/strong&gt;
-In order to register as a Jekyll page the file must contain &lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/YAML-Front-Matter&quot;&gt;YAML Front-Matter&lt;/a&gt;.
-Registering a page means 1) that Jekyll will process the page and 2) that the page object will be available in the &lt;code&gt;site.pages&lt;/code&gt; array for inclusion into your templates.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Categories and Tags&lt;/strong&gt;
-Pages do not compute categories nor tags so defining them will have no effect.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Sub-Directories&lt;/strong&gt;
-If pages are defined in sub-directories, the path to the page will be reflected in the url.
-Example:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;.
-|-- people
-    |-- bob
-        |-- essay.html
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This page will be available at &lt;code&gt;http://yourdomain.com/people/bob/essay.html&lt;/code&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Recommended Pages&lt;/strong&gt;&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;&lt;strong&gt;index.html&lt;/strong&gt;
-You will always want to define the root index.html page as this will display on your root URL.&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;404.html&lt;/strong&gt;
-Create a root 404.html page and GitHub Pages will serve it as your 404 response.&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;sitemap.html&lt;/strong&gt;
-Generating a sitemap is good practice for SEO.&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;about.html&lt;/strong&gt;
-A nice about page is easy to do and gives the human perspective to your website.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 id=&quot;templates-in-jekyll&quot;&gt;Templates in Jekyll&lt;/h2&gt;
-
-&lt;p&gt;Templates are used to contain a page’s or post’s content.
-All templates have access to a global site object variable: &lt;code&gt;site&lt;/code&gt; as well as a page object variable: &lt;code&gt;page&lt;/code&gt;.
-The site variable holds all accessible content and metadata relative to the site.
-The page variable holds accessible data for the given page or post being rendered at that point.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Create a Template&lt;/strong&gt;
-Templates are created by properly formatting a file and placing it in the &lt;code&gt;_layouts&lt;/code&gt; directory.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Formatting&lt;/strong&gt;
-Templates should be coded in HTML and contain YAML Front Matter.
-All templates can contain Liquid code to work with your site’s data.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Rending Page/Post Content in a Template&lt;/strong&gt;
-There is a special variable in all templates named : &lt;code&gt;content&lt;/code&gt;.
-The &lt;code&gt;content&lt;/code&gt; variable holds the page/post content including any sub-template content previously defined.
-Render the content variable wherever you want your main content to be injected into your template:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;...
-&amp;lt;body&amp;gt;
-  &amp;lt;div id=&quot;sidebar&quot;&amp;gt; ... &amp;lt;/div&amp;gt;
-  &amp;lt;div id=&quot;main&quot;&amp;gt;
-    &amp;#123;{content}&amp;#125;
-  &amp;lt;/div&amp;gt;
-&amp;lt;/body&amp;gt;
-...&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h3 id=&quot;sub-templates&quot;&gt;Sub-Templates&lt;/h3&gt;
-
-&lt;p&gt;Sub-templates are exactly templates with the only difference being they
-define another “root” layout/template within their YAML Front Matter.
-This essentially means a template will render inside of another template.&lt;/p&gt;
-
-&lt;h3 id=&quot;includes&quot;&gt;Includes&lt;/h3&gt;
-&lt;p&gt;In Jekyll you can define include files by placing them in the &lt;code&gt;_includes&lt;/code&gt; folder.
-Includes are NOT templates, rather they are just code snippets that get included into templates.
-In this way, you can treat the code inside includes as if it was native to the parent template.&lt;/p&gt;
-
-&lt;p&gt;Any valid template code may be used in includes.&lt;/p&gt;
-
-&lt;h2 id=&quot;using-liquid-for-templating&quot;&gt;Using Liquid for Templating&lt;/h2&gt;
-
-&lt;p&gt;Templating is perhaps the most confusing and frustrating part of Jekyll.
-This is mainly due to the fact that Jekyll templates must use the Liquid Templating Language.&lt;/p&gt;
-
-&lt;h3 id=&quot;what-is-liquid&quot;&gt;What is Liquid?&lt;/h3&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://github.com/Shopify/liquid&quot;&gt;Liquid&lt;/a&gt; is a secure templating language developed by &lt;a href=&quot;http://shopify.com&quot;&gt;Shopify&lt;/a&gt;.
-Liquid is designed for end-users to be able to execute logic within template files
-without imposing any security risk on the hosting server.&lt;/p&gt;
-
-&lt;p&gt;Jekyll uses Liquid to generate the post content within the final page layout structure and as the primary interface for working with
-your site and post/page data.&lt;/p&gt;
-
-&lt;h3 id=&quot;why-do-we-have-to-use-liquid&quot;&gt;Why Do We Have to Use Liquid?&lt;/h3&gt;
-
-&lt;p&gt;GitHub uses Jekyll to power &lt;a href=&quot;http://pages.github.com/&quot;&gt;GitHub Pages&lt;/a&gt;.
-GitHub cannot afford to run arbitrary code on their servers so they lock developers down via Liquid.&lt;/p&gt;
-
-&lt;h3 id=&quot;liquid-is-not-programmer-friendly&quot;&gt;Liquid is Not Programmer-Friendly.&lt;/h3&gt;
-
-&lt;p&gt;The short story is liquid is not real code and its not intended to execute real code.
-The point being you can’t do jackshit in liquid that hasn’t been allowed explicitly by the implementation.
-What’s more you can only access data-structures that have been explicitly passed to the template.&lt;/p&gt;
-
-&lt;p&gt;In Jekyll’s case it is not possible to alter what is passed to Liquid without hacking the gem or running custom plugins.
-Both of which cannot be supported by GitHub Pages.&lt;/p&gt;
-
-&lt;p&gt;As a programmer - this is very frustrating.&lt;/p&gt;
-
-&lt;p&gt;But rather than look a gift horse in the mouth we are going to
-suck it up and view it as an opportunity to work around limitations and adopt client-side solutions when possible.&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Aside&lt;/strong&gt;
-My personal stance is to not invest time trying to hack liquid. It’s really unnecessary
-&lt;em&gt;from a programmer’s&lt;/em&gt; perspective. That is to say if you have the ability to run custom plugins (i.e. run arbitrary ruby code)
-you are better off sticking with ruby. Toward that end I’ve built &lt;a href=&quot;http://github.com/plusjade/mustache-with-jekyll&quot;&gt;Mustache-with-Jekyll&lt;/a&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;static-assets&quot;&gt;Static Assets&lt;/h2&gt;
-
-&lt;p&gt;Static assets are any file in the root or non-underscored subfolders that are not pages.
-That is they have no valid YAML Front Matter and are thus not treated as Jekyll Pages.&lt;/p&gt;
-
-&lt;p&gt;Static assets should be used for images, css, and javascript files.&lt;/p&gt;
-
-&lt;h2 id=&quot;how-jekyll-parses-files&quot;&gt;How Jekyll Parses Files&lt;/h2&gt;
-
-&lt;p&gt;Remember Jekyll is a processing engine. There are two main types of parsing in Jekyll.&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;&lt;strong&gt;Content parsing.&lt;/strong&gt;
-  This is done with textile or markdown.&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;Template parsing.&lt;/strong&gt;
-This is done with the liquid templating language.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;And thus there are two main types of file formats needed for this parsing.&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;&lt;strong&gt;Post and Page files.&lt;/strong&gt;
-All content in Jekyll is either a post or a page so valid posts and pages are parsed with markdown or textile.&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;Template files.&lt;/strong&gt;
-  These files go in &lt;code&gt;_layouts&lt;/code&gt; folder and contain your blogs &lt;strong&gt;templates&lt;/strong&gt;. They should be made in HTML with the help of Liquid syntax.
-  Since include files are simply injected into templates they are essentially parsed as if they were native to the template.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;&lt;strong&gt;Arbitrary files and folders.&lt;/strong&gt;
-Files that &lt;em&gt;are not&lt;/em&gt; valid pages are treated as static content and pass through
-Jekyll untouched and reside on your blog in the exact structure and format they originally existed in.&lt;/p&gt;
-
-&lt;h3 id=&quot;formatting-files-for-parsing&quot;&gt;Formatting Files for Parsing.&lt;/h3&gt;
-
-&lt;p&gt;We’ve outlined the need for valid formatting using &lt;strong&gt;YAML Front Matter&lt;/strong&gt;.
-Templates, posts, and pages all need to provide valid YAML Front Matter even if the Matter is empty.
-This is the only way Jekyll knows you want the file processed.&lt;/p&gt;
-
-&lt;p&gt;YAML Front Matter must be prepended to the top of template/post/page files:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;---
-layout: post
-category : pages
-tags : [how-to, jekyll]
----
-
-... contents ...
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Three hyphens on a new line start the Front-Matter block and three hyphens on a new line end the block.
-The data inside the block must be valid YAML.&lt;/p&gt;
-
-&lt;p&gt;Configuration parameters for YAML Front-Matter is outlined here:
-&lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/YAML-Front-Matter&quot;&gt;A comprehensive explanation of YAML Front Matter&lt;/a&gt;&lt;/p&gt;
-
-&lt;h4 id=&quot;defining-layouts-for-posts-and-templates-parsing&quot;&gt;Defining Layouts for Posts and Templates Parsing.&lt;/h4&gt;
-
-&lt;p&gt;The &lt;code&gt;layout&lt;/code&gt; parameter in the YAML Front Matter defines the template file for which the given post or template should be injected into.
-If a template file specifies its own layout, it is effectively being used as a &lt;code&gt;sub-template.&lt;/code&gt;
-That is to say loading a post file into a template file that refers to another template file with work in the way you’d expect; as a nested sub-template.&lt;/p&gt;
-
-&lt;h2 id=&quot;how-jekyll-generates-the-final-static-files&quot;&gt;How Jekyll Generates the Final Static Files.&lt;/h2&gt;
-
-&lt;p&gt;Ultimately, Jekyll’s job is to generate a static representation of your website.
-The following is an outline of how that’s done:&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Jekyll collects data.&lt;/strong&gt;
-  Jekyll scans the posts directory and collects all posts files as post objects. It then scans the layout assets and collects those and finally scans other directories in search of pages.&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Jekyll computes data.&lt;/strong&gt;
-  Jekyll takes these objects, computes metadata (permalinks, tags, categories, titles, dates) from them and constructs one
-  big &lt;code&gt;site&lt;/code&gt; object that holds all the posts, pages, layouts, and respective metadata.
-  At this stage your site is one big computed ruby object.&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Jekyll liquifies posts and templates.&lt;/strong&gt;
-  Next jekyll loops through each post file and converts (through markdown or textile) and &lt;strong&gt;liquifies&lt;/strong&gt; the post inside of its respective layout(s).
-  Once the post is parsed and liquified inside the the proper layout structure, the layout itself is “liquified”.
- &lt;strong&gt;Liquification&lt;/strong&gt; is defined as follows: Jekyll initiates a Liquid template, and passes a simpler hash representation of the ruby site object as well as a simpler
-  hash representation of the ruby post object. These simplified data structures are what you have access to in the templates.&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Jekyll generates output.&lt;/strong&gt;
- Finally the liquid templates are “rendered”, thereby processing any liquid syntax provided in the templates
- and saving the final, static representation of the file.&lt;/p&gt;
-  &lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;&lt;strong&gt;Notes.&lt;/strong&gt;
-Because Jekyll computes the entire site in one fell swoop, each template is given access to
-a global &lt;code&gt;site&lt;/code&gt; hash that contains useful data. It is this data that you’ll iterate through and format
-using the Liquid tags and filters in order to render it onto a given page.&lt;/p&gt;
-
-&lt;p&gt;Remember, in Jekyll you are an end-user. Your API has only two components:&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;The manner in which you setup your directory.&lt;/li&gt;
-  &lt;li&gt;The liquid syntax and variables passed into the liquid templates.&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;All the data objects available to you in the templates via Liquid are outlined in the &lt;strong&gt;API Section&lt;/strong&gt; of Jekyll-Bootstrap.
-You can also read the original documentation here: &lt;a href=&quot;https://github.com/mojombo/jekyll/wiki/Template-Data&quot;&gt;https://github.com/mojombo/jekyll/wiki/Template-Data&lt;/a&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
-
-&lt;p&gt;I hope this paints a clearer picture of what Jekyll is doing and why it works the way it does.
-As noted, our main programming constraint is the fact that our API is limited to what is accessible via Liquid and Liquid only.&lt;/p&gt;
-
-&lt;p&gt;Jekyll-bootstrap is intended to provide helper methods and strategies aimed at making it more intuitive and easier to work with Jekyll =)&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Thank you&lt;/strong&gt; for reading this far.&lt;/p&gt;
-
-&lt;h2 id=&quot;next-steps&quot;&gt;Next Steps&lt;/h2&gt;
-
-&lt;p&gt;Please take a look at []()
-or jump right into &lt;a href=&quot;&quot;&gt;Usage&lt;/a&gt; if you’d like.&lt;/p&gt;
 </description>
-                <link>http://chunmato.github.io/lessons/2011/12/29/jekyll-introduction</link>
-                <guid>http://chunmato.github.io/lessons/2011/12/29/jekyll-introduction</guid>
-                <pubDate>2011-12-29T00:00:00+08:00</pubDate>
+                <link>http://chunmato.github.io/c++/2012/08/14/folly-overview</link>
+                <guid>http://chunmato.github.io/c++/2012/08/14/folly-overview</guid>
+                <pubDate>2012-08-14T00:00:00+08:00</pubDate>
+        </item>
+
+        <item>
+                <title>遥控器和迁移</title>
+                <description>
+&lt;p&gt;某次整理实验室整理出来的一个很早的东西——红外线开关&lt;/p&gt;
+
+&lt;p&gt;可以学习红外线信号（如电视机遥控器），远程接收信号控制电源开关&lt;/p&gt;
+
+&lt;p&gt;前一段时间拍了个视频，&lt;a href=&quot;http://v.youku.com/v_show/id_XNDE0MDIxNTgw.html&quot;&gt;视频点我&lt;/a&gt;&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;实验室陈龙彪同学的工作，已经发表在学术会议上，那天闲来无聊拍了一段&lt;/p&gt;
+
+&lt;p&gt;利用NFC触发音乐的迁移（手机上或者音箱），&lt;a href=&quot;http://v.youku.com/v_show/id_XNDE0MDIwOTg4.html&quot;&gt;视频点我&lt;/a&gt;&lt;/p&gt;
+</description>
+                <link>http://chunmato.github.io/idea/2012/06/16/remote-control-and-migration</link>
+                <guid>http://chunmato.github.io/idea/2012/06/16/remote-control-and-migration</guid>
+                <pubDate>2012-06-16T00:00:00+08:00</pubDate>
+        </item>
+
+        <item>
+                <title>实验室一小时</title>
+                <description>
+&lt;p&gt;由于旁边的同学正在做实验，使用kinect截图，于是就简单地把他的实验数据拿过来拼接了一下，可以大致看出来这一个小时里的动作。&lt;/p&gt;
+
+&lt;p&gt;视频由1000多张照片生成，由于是别人的实验数据，因此角度不是太好。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://v.youku.com/v_show/id_XNDA2MDcyMTcy.html&quot;&gt;视频点我&lt;/a&gt;&lt;/p&gt;
+
+&lt;!-- more --&gt;
+</description>
+                <link>http://chunmato.github.io/2012/06/15/one-hour-in-lab</link>
+                <guid>http://chunmato.github.io/2012/06/15/one-hour-in-lab</guid>
+                <pubDate>2012-06-15T00:00:00+08:00</pubDate>
+        </item>
+
+        <item>
+                <title>Java的一些读书笔记</title>
+                <description>
+&lt;p&gt;Java的GC&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;如何判断对象是否可以被GC？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;主要有两个算法：1）引用计数法；2）根搜索法；&lt;/p&gt;
+
+&lt;p&gt;引用计数法是指对象每被引用1次，对象中的引用计数器加1，引用失效时，计数器减1，直到计数器为0的时候，对象被标记为可回收。&lt;/p&gt;
+
+&lt;p&gt;根搜索法是指从GC Roots开始建立一个引用的图，当一个对象到GC Roots的路径不存在时，对象可以标记为可回收，JAVA中使用的是这种方法。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;&lt;strong&gt;对象GC的过程？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;当对象被标记为可回收时，JVM判断判断对象是否有必要执行finalize方法（只有当finalize方法未被执行过的时候才被认为需要执行finalize方法）。&lt;/p&gt;
+
+&lt;p&gt;如需要执行finalize方法，把对象加入到F-Queue中，稍后由虚拟机调用其finalize方法，如对象调用完之后仍旧是被标记为可回收，这块对象所占的内存空间就被虚拟机回收了。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;内存回收的基本算法？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;主要有四个算法：1）标记-清除算法；2）复制算法；3）标记-整理算法；4）分代收集算法。&lt;/p&gt;
+
+&lt;p&gt;标记-清除算法，是指直接回收被标记的内存块。会产生许多不连续的内存块碎片。&lt;/p&gt;
+
+&lt;p&gt;复制算法，把内存块分为大小相等的两个区，只使用其中1个区，当一块内存块用完时，把每块复制到另外一个区，并且使用的内存块处于连续的空间。&lt;/p&gt;
+
+&lt;p&gt;标记-整理算法，是指内存块标记完之后，让所有使用的内存块向一端移动，然后清理掉端界意外的内存。&lt;/p&gt;
+
+&lt;p&gt;分代收集算法，是指把JAVA堆根据对象存活周期分为新生代和老生代，根据每个代的特点采用适当的手机算法。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;各种垃圾收集器？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;主要有：1）Serial；2）ParNew；3）Parallel Scavenge；4）Serial Old；5）Parallel Old；6）CMS(Concurrent Mark Sweep)；7）G1(Garbage First)；&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Java的引用&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Java中引用主要有四类，分别是：1）Strong Reference；2）Soft Reference；3）Weak Reference；4）Phantom Reference；主要跟Java的GC有关。&lt;/p&gt;
+
+&lt;p&gt;可以从java.lang.ref包里可以看到有几个类：SoftReference、WeakReference、PhantomReference，分别对应后面三种引用。&lt;/p&gt;
+
+&lt;p&gt;Strong Reference，就是一般意义上的引用，类似于Object obj = new Object的引用，只要Strong Reference存在，GC就不会回收这个对象。&lt;/p&gt;
+
+&lt;p&gt;Soft Reference，被Soft Reference引用的对象，只有当系统将要发生内存溢出一场之前，才会被回收这块内存。&lt;/p&gt;
+
+&lt;p&gt;Weak Reference，被Weak Reference引用的对象，能生存到下次垃圾收集之前，可以使用一段代码解释。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;checkNull&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Object&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;println&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Dead&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;println&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Alive&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Throwable&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;Object&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Object&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;WeakReference&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Object&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;wr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;WeakReference&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Object&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;checkNull&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;wr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;checkNull&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;wr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;gc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;checkNull&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;wr&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;输出的是：&lt;/p&gt;
+
+&lt;p&gt;Alive&lt;/p&gt;
+
+&lt;p&gt;Alive&lt;/p&gt;
+
+&lt;p&gt;Dead&lt;/p&gt;
+
+&lt;p&gt;也就是说只有调用了GC只有，Weak Reference才失效，get不到任何东西，内存才被回收，而在调用GC之前，即使obj=null了，建立Weak Reference的对象还是能get到的。&lt;/p&gt;
+
+&lt;p&gt;Phontom Reference，对对象的生存时间产生任何影响，只是希望能在GC回收内存块的时候收到一个系统通知。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;犄角旮旯的关键字&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;主要有3个犄角旮旯的关键字：strictfp、transient、native&lt;/p&gt;
+
+&lt;p&gt;strictfp&lt;/p&gt;
+
+&lt;p&gt;浮点数计算方法相关的关键词，可用于修饰类、接口和方法，在此关键词内的方法的浮点数计算都是符合IEEE 754标准的，可以保证可移植性。&lt;/p&gt;
+
+&lt;p&gt;transient&lt;/p&gt;
+
+&lt;p&gt;序列化相关的关键词，用于修饰用来Serializable类属性，这个属性在类序列化的时候不被序列化。如&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Foo&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;implements&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Serializable&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt; 
+
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;transient&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt; 
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;当改变a和b的值之后序列化，再从序列化文件中读取这个类之后，b的值为序列化之前的值，而a是0。&lt;/p&gt;
+
+&lt;p&gt;native&lt;/p&gt;
+
+&lt;p&gt;用于修饰Java类的方法，表示这个方法是原生的方法，是调用被编译后的库文件的。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Prompt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;native&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getLine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[])&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+
+	&lt;span class=&quot;n&quot;&gt;Prompt&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Prompt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+	&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;input&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getLine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Type a line: &amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+	&lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;println&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;User typed: &amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+	&lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;loadLibrary&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;MyImpOfPrompt&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;这些犄角旮旯的关键字目前开发中还没用到&lt;/p&gt;
+
+&lt;p&gt;参考：《深入理解Java虚拟机——JVM高级特性与最佳实践》&lt;/p&gt;
+</description>
+                <link>http://chunmato.github.io/java/2012/03/15/reading-java</link>
+                <guid>http://chunmato.github.io/java/2012/03/15/reading-java</guid>
+                <pubDate>2012-03-15T00:00:00+08:00</pubDate>
+        </item>
+
+        <item>
+                <title>ActiveMQ Android Client</title>
+                <description>
+&lt;p&gt;&lt;a href=&quot;http://activemq.apache.org/&quot;&gt;ActiveMQ&lt;/a&gt;是一个JMS的消息队列的一种实现，在高并发的服务端用的较多，据称能够支持每秒20000的并发数据访问。&lt;/p&gt;
+
+&lt;p&gt;他实现了JMS标准的基本操作，如点对点的消息收发，发布/订阅消息等等，并且支持了许多协议，如Openwire、REST、Stomp、XMPP等等，因此支持了多语言和多平台，它自带的Java库实现了openwire和stomp的访问，但是如要手机端（如Android）对JMS的支持很差（或者还不支持？），因此对于手机端来说操作ActiveMQ不得不使用XMPP或者REST。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;XMPP我尝试过，使用&lt;a href=&quot;http://www.igniterealtime.org/projects/smack/index.jsp&quot;&gt;smack&lt;/a&gt;，smack是一个XMPP的Java库，原本是用来做IM开发的（作为同一系列的&lt;a href=&quot;http://www.igniterealtime.org/projects/spark/index.jsp&quot;&gt;spark&lt;/a&gt;是XMPP的IM客户端，基于smack，&lt;a href=&quot;http://www.igniterealtime.org/projects/openfire/index.jsp&quot;&gt;Openfire&lt;/a&gt;是XMPP的服务器，因此spark+openfire能够搭建一个IM系统，同样ActiveMQ也可以作为XMPP的服务器，ActiveMQ+spark也可以搭建一个IM系统。）使用smack能够连接ActiveMQ，并建立一个Topic，向Topic队列发送消息，但是一直没有找到如何建立Queue，生产消息和消费消息。有人还特意为Android写了个&lt;a href=&quot;http://code.google.com/p/asmack/&quot;&gt;asmack&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;我最后还是采用了最简单的REST，因为这基本上是HTTP的GET/POST来做，不需要任何第三方库。&lt;/p&gt;
+
+&lt;p&gt;我需要的操作有3个：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;produce：向一个消息队列中发送消息。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;consume：消费一个队列中的一条消息。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;unsubscribe：撤销一个队列的一个conumer。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;实现比较简单，produce操作即向http://localhost:8161/demo/message POST一条HTTP请求，POST的数据如：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;destination：队列名称&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;type：队列类型，queue或者topic&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;TimeToLive：消息在队列中的有效期&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;body：消息的内容&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;其他还有一些能够设置，不过用处不是很大。&lt;/p&gt;
+
+&lt;p&gt;consume操作则是向http://localhost:8161/demo/message GET一条HTTP请求，一般格式如：&lt;/p&gt;
+
+&lt;p&gt;http://localhost:8161/demo/message/destination?type=queue&amp;amp;clientId=cid&amp;amp;readTimeout=timeout&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;destination：想要消费数据的队列名称&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;type：queue或者topic&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;clientId：客户端的ID，不同的ID对应不同的consumer&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;readTimeout：读队列等待的时长，超过时长请求等待结束&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;unsubscribe操作指的是取消队列的consumer，两个consumer同时在consume一个队列时REST请求似乎没有响应，因此在consume一条消息之后需要移除这个consumer，而这个操作是到了ActiveMQ 5.4.0之后才有这个操作。做法是向http://localhost:8161/demo/message POST一条请求，其中数据为：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;action：为unsubscribe&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;clientId：要移除的consumer的id&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;这样手机端就可以与ActiveMQ通信。&lt;/p&gt;
+</description>
+                <link>http://chunmato.github.io/2011/05/20/activemq-android-client</link>
+                <guid>http://chunmato.github.io/2011/05/20/activemq-android-client</guid>
+                <pubDate>2011-05-20T00:00:00+08:00</pubDate>
+        </item>
+
+        <item>
+                <title>自动语言/编码检测算法</title>
+                <description>
+&lt;p&gt;Mozilla的自动编码检测代码参考了论文[《A composite approach to language/encoding detection》] (http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html)，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;h4 id=&quot;coding-scheme-method&quot;&gt;Coding scheme method&lt;/h4&gt;
+
+&lt;p&gt;这是一个比较直观的方法，一般被用于multi-byte encodings，因为在multi-byte encoding中，并不是所有的code point被用到，因此可以逐个字节检测，当发现一个不合法的byte时就可以判断尝试的编码类型错误。&lt;/p&gt;
+
+&lt;p&gt;在这个方法中，为每一种编码类型建立一个状态机，当输入一个字节时根据状态机转移状态，检测算法只需要关心这个状态机的三种状态：START、ME、ERROR，其中START表示开始状态；ME表示对与输入序列属于猜测的编码类型，并且不可能是其他编码的序列，因此可以可以直接给出猜测的结果；而ERROR则是输入字节序列是非法的，可以直接排除这个编码。&lt;/p&gt;
+
+&lt;p&gt;这个方法 对于一些multi-byte的编码类型来说是比较有效的，如UTF-8、ISO2022-xx、HZ，但是对于如EUC-JP、EUC-CN、EUC-KR来说效果并不好，对与single-byte的编码效果很差， 能够处理任意的输入文本。&lt;/p&gt;
+
+&lt;h4 id=&quot;character-distribution&quot;&gt;Character Distribution&lt;/h4&gt;
+
+&lt;p&gt;Coding schema method是一个规则方法，而另外两种则是概率的方法：对字符的分别做一个统计，一般来说任何语言中，一些字符会比其他的字符出现的概率更好，如对于用简体中文（6763个字符）来说，512个字符的出现累积概率约80%；繁体中文约75%；日文约92%；韩文约98%。&lt;/p&gt;
+
+&lt;p&gt;在这个方法中，对每个输入序列字符进行判断，将其分为两个“frequently used”和“not frequently used”，如果输入字符属于频繁出现的512个字符中，定义为“frequently used”，否则则为“not frequently used”。根据这个统计计算distribution ratio：&lt;/p&gt;
+
+&lt;p&gt;Distribution Ratio = (“frequently used”数量) / （“not frequently used”数量）
+定义：&lt;/p&gt;
+
+&lt;p&gt;confidence level = （输入字符序列的distribution ratio） / （ideal distribution ratio）
+其中ideal distribution ratio为根据训练语料库得到的数据，如简体中文中，512个字符出现的累积概率是0.79135，因此ideal distribution ratio = (0.79135) / (1 – 0.79135) =3.79&lt;/p&gt;
+
+&lt;p&gt;使用这个方法计算每个输入序列的confidence level，得到最高的编码猜测结果。&lt;/p&gt;
+
+&lt;p&gt;这个方法对于multi-byte编码效果较好，但只能处理特定的文本，因为需要文本的统计结果。&lt;/p&gt;
+
+&lt;h4 id=&quot;char-sequence-distribution&quot;&gt;2-Char Sequence Distribution&lt;/h4&gt;
+
+&lt;p&gt;Character Distribution方法是基于单个字符的，而这个方法则是基于连续两个字符的，并且结合了character distribution方法，定义了confidence level为：&lt;/p&gt;
+
+&lt;p&gt;confidence level = (TotalSequence - NegativeSequenceCount) / TotalSequence * FrequentCharCount / TotalCharacter
+其中TotalSequence：目标文本中的相邻字符序列数量&lt;/p&gt;
+
+&lt;p&gt;NegativeSequenceCount：目标文本中的2-Char序列中，属于低概率出现序列数量&lt;/p&gt;
+
+&lt;p&gt;FrequentCharCount：“frequently used”字符的数量&lt;/p&gt;
+
+&lt;p&gt;TotalCharacter：字符总数&lt;/p&gt;
+
+&lt;p&gt;这种方法对于single-byte的效果较好，而对于multi-byte的效果较差，当样本数量较小时效果好，只对特定的文本类型有效。&lt;/p&gt;
+
+&lt;p&gt;因为这三种算法都只对特定的编码方式的检测效率较高，因此作者根据输入字符的类型分别用不同的方法进行检测，得到检测的结果。&lt;/p&gt;
+</description>
+                <link>http://chunmato.github.io/algorithm/2010/12/12/auto-language-detecting</link>
+                <guid>http://chunmato.github.io/algorithm/2010/12/12/auto-language-detecting</guid>
+                <pubDate>2010-12-12T00:00:00+08:00</pubDate>
         </item>
 
 
