@@ -1,0 +1,379 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <title>Folly源码分析(4) – 多线程数据结构</title>
+   <meta name="author" content="chunmato" />
+
+   <link rel="start" href="/" />
+
+	
+	
+	
+  	<link rel="alternate" type="application/atom+xml" href="http://feeds.feedburner.com/feedname" title="RSS feed" />
+	
+	
+
+   <!-- syntax highlighting CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/syntax.css" type="text/css" />
+
+   <!-- Homepage CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/screen.css" type="text/css" />
+
+</head>
+<body>
+<div id="site">
+  
+  <div id="header">
+    <h1>
+    	<a href="/" title="Notebook" id="title">Notebook</a>
+    	<!--span class="byline">&larr; <a href="/">chunmato</a></span-->
+    </h1>
+    <ul class="nav">
+      <li><a class="home" href="/">Home</a></li>
+      <li><a  href="/archive.html">Archive</a></li>
+      <!--li><a  href="/pages.html">Pages</a></li-->
+      <li><a  href="/categories.html">Categories</a></li>
+      <li><a  href="/tags.html">Tags</a></li>
+    </ul>
+  </div>
+
+  
+<div id="page">
+	
+  <h1 class="emphnext">Folly源码分析(4) – 多线程数据结构</h1>
+  <ul class="tag_box inline">
+  
+  
+
+
+  
+     
+    	<li><a href="/tags.html#C++-ref">C++ <span>5</span></a></li>
+    
+  
+
+
+
+  </ul>
+
+  
+<p>Folly为多线程做了许多相关的组件和优化，例如之前介绍内存管理时的提到的ThreadCachedArena就为多线程的内存分配做优化，本文将会提到几个多线程相关的组件，如线程局部变量ThreadLocal、原子递增变量ThreadCachedInt、线程安全原子哈希AtomicHashMap、并发的跳表ConcurrentSkipList、高性能的生产者消费者队列ProducerConsumerQueue。</p>
+
+<p><strong>ThreadLocal</strong></p>
+
+<p>线程局部变量是指只有在本线程中才能被访问到的数据，对于其他线程是屏蔽的，类似于线程范围的全局变量，如pthread_setspecific/pthread_getspecific实现了类似的功能。但是相比于pthread_setspecific/pthread_getspecific，ThreadLocal更为易用，只要定义ThreadLocalPtr<xxx>，这个对象就会为每个线程分配一个私有的变量，当线程退出的时候自动执行释放函数。</xxx></p>
+
+<p>当然线程局部变量的一种替代解决方案是让线程访问一个全局变量，使线程内部的各个函数就能共享一个变量，这样的缺陷主要有1）当一个线程挂掉时影响到其他线程；2）数据同步影响效率；因此线程局部变量是一个很有用的东西。</p>
+
+<!-- more -->
+
+<p>Folly对这个的类的优化主要有：</p>
+
+<ol>
+  <li>
+    <p>定义了模版参数Tag，每个Tag只是用1个pthread_key_t，原因是一般来说pthread_key_t的个数是有限的，一般是1024个。</p>
+  </li>
+  <li>
+    <p>开发人员可以指定线程退出时执行的函数和所有线程退出后执行的函数。</p>
+  </li>
+  <li>
+    <p>提供了accessAllThreads来遍历所有线程中的局部变量，这个被用在ThreadCachedInt的获得较为准确的数据。</p>
+  </li>
+</ol>
+
+<p>在Folly的文档中介绍了这个类的用法，例如</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="p">{</span>
+  <span class="n">folly</span><span class="o">::</span><span class="n">ThreadLocalPtr</span> <span class="n">w</span><span class="p">;</span>
+  <span class="n">w</span><span class="p">.</span><span class="n">reset</span><span class="p">(</span><span class="k">new</span> <span class="n">Widget</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">Widget</span><span class="o">::</span><span class="n">customDeleterA</span><span class="p">);</span>
+  <span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="p">([</span><span class="o">&amp;</span><span class="n">w</span><span class="p">]()</span> <span class="p">{</span>
+    <span class="n">w</span><span class="p">.</span><span class="n">reset</span><span class="p">(</span><span class="k">new</span> <span class="n">Widget</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">Widget</span><span class="o">::</span><span class="n">customDeleterB</span><span class="p">);</span>
+    <span class="n">w</span><span class="p">.</span><span class="n">get</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">mangleWidget</span><span class="p">();</span>
+  <span class="p">}</span> <span class="c1">// Widget(1) is destroyed with customDeleterB</span>
+<span class="p">}</span> <span class="c1">// Widget(0) is destroyed with customDeleterA</span>
+<span class="c1">// customDeleterB通过THIS_THREAD设定，当单个线程退出的时候调用</span>
+<span class="c1">// custonDeleterA通过ALL_THREAD设定，当所有线程退出的时候调用</span></code></pre></div>
+
+<p>使用accessAllThread遍历访问线程的私有数据</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">class</span> <span class="nc">SimpleThreadCachedInt</span> <span class="p">{</span>
+
+  <span class="k">class</span> <span class="nc">NewTag</span><span class="p">;</span>  <span class="c1">// Segments the global mutex</span>
+  <span class="n">ThreadLocal</span> <span class="n">val_</span><span class="p">;</span>
+
+ <span class="k">public</span><span class="o">:</span>
+  <span class="kt">void</span> <span class="n">add</span><span class="p">(</span><span class="kt">int</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">*</span><span class="n">val_</span> <span class="o">+=</span> <span class="n">val</span><span class="p">;</span>  <span class="c1">// operator*() gives a reference to the thread local instance</span>
+  <span class="p">}</span>
+
+  <span class="kt">int</span> <span class="n">read</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="c1">// accessAllThreads acquires the global lock</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">i</span> <span class="p">:</span> <span class="n">val_</span><span class="p">.</span><span class="n">accessAllThreads</span><span class="p">())</span> <span class="p">{</span>
+      <span class="n">ret</span> <span class="o">+=</span> <span class="n">i</span><span class="p">;</span>
+    <span class="p">}</span>  <span class="c1">// Global lock is released on scope exit</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">};</span></code></pre></div>
+
+<p>ThreadLocal实现的数据结构大致如下</p>
+
+<p><img width="800px" src="/assets/images/2012/09/09/threadlocal.png" alt="threadlocal" /></p>
+
+<p>使用一个全局静态元数据StaticMeta保存了线程数据ThreadEntity的头指针和一些用于管理的数据，当一个线程启动时需要将数据加入到线程私有变量中去的时候，在head的指向的私有数据链表中，而实际的数据时保存在elements的ElementWrap的数组中，其中的ptr指向于真正的数据，而每个ElementWrap都可以指定自己的资源释放函数Deleter。</p>
+
+<p><strong>ThreadCachedInt</strong></p>
+
+<p>这是一个整型的类，主要用于多线程同时操作一个自增的整型变量，在精度保证不丢失的情况下提供极高的性能，在测试获得的结果是，它比std::atomic_fetch_add快10倍。</p>
+
+<p>提供了两种的对这个自增整型类的读取方式：</p>
+
+<ul>
+  <li>
+    <p>readFast：速度很快（一个load指令得到的数据），但是数据有可能是以前的数据，即读到的数据比真是数据小，这种情况适用于对精度无太大要求，但是对效率要求很高的情况。</p>
+  </li>
+  <li>
+    <p>readFull：速度相比于readFast慢，但是数据较为准确，做法事实上就是累加所有线程中的计数器和全局的计数器，在读取线程的数据的时候需要获得一个锁，因此效率比较差。</p>
+  </li>
+</ul>
+
+<p>这个类的数据结构示意图</p>
+
+<p><img width="800px" src="/assets/images/2012/09/09/threadcachedint.png" alt="threadcachedint" /></p>
+
+<p>这个示意图也示意了这个类的实现过程，即保存一个类全局变量和线程私有变量val，是ThreadLocalPtr，这个类就是上面介绍的ThreadLocal，当线程中的val更新次数超过一定次数的时候，将本线程中的计数器val加到全局的targe_中，本身的val清零。</p>
+
+<p>readFast直接读取target_的值</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">IntT</span> <span class="nf">readFast</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">target_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+  <span class="p">}</span></code></pre></div>
+
+<p>readFull则需要累加所有的值</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="n">IntT</span> <span class="nf">readFull</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+    <span class="n">IntT</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">readFast</span><span class="p">();</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">cache</span> <span class="p">:</span> <span class="n">cache_</span><span class="p">.</span><span class="n">accessAllThreads</span><span class="p">())</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">cache</span><span class="p">.</span><span class="n">reset_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">ret</span> <span class="o">+=</span> <span class="n">cache</span><span class="p">.</span><span class="n">val_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+  <span class="p">}</span></code></pre></div>
+
+<p><strong>AtomicHashMap</strong></p>
+
+<p>AtomicHashMap是一个几乎无锁的原子HashMap，几乎无所的意思是只有少量的几个方法是有锁的。</p>
+
+<p>这个类的文档和源代码的注释中解释了这个类的有点和缺点，如下</p>
+
+<p>优点：</p>
+
+<ul>
+  <li>高性能，特别是在多线程要求非常高的环境中
+相比tbb::concurrent_has_map快2-5倍</li>
+  <li>好的内存利用率，容量不过估的前提下
+良好的分散性能？（ Good fragmentation properties ）</li>
+  <li>查找快速</li>
+</ul>
+
+<p>缺陷：</p>
+
+<ul>
+  <li>Key只支持int32、int64，原因是需要执行无所的cas（compare and swap）操作</li>
+  <li>必须指定empty、locked、erased的key，原因也是key的限制</li>
+  <li>性能会随着初始尺寸的容量的增大线性降低，原因是其数据结构的submap的查找</li>
+  <li>最大的size被限制在初始size的18倍</li>
+  <li>擦除的内存块不被释放，而是被标记擦除，为了效率</li>
+</ul>
+
+<p>数据结构如下</p>
+
+<p><img width="800px" src="/assets/images/2012/09/09/atomichashmap.png" alt="atomichashmap" /></p>
+
+<p>一个AtomicHashMap中最多包含16个subMap，subMap定义为AtomicHashArray，用数组实现的存储数据的hash 表。在初始化的时候只初始化1个SubMap，其他都置为null，当一个SubMap被放满时再初始化下一个SubMap。</p>
+
+<p>主要方法的实现大致如下</p>
+
+<p>Insert</p>
+
+<p>从第一个SubMap查找位置，使用线性的解决冲突，即有冲突，不断找相邻的下一个位置，若满则找下一个，若全满，则申请新的SubMap，大小为</p>
+
+<p>第一个SubMap的capacity * 1.8 ^ (nextIdx – 1)</p>
+
+<p><img width="800px" src="/assets/images/2012/09/09/atomichashmap_insert.png" alt="atomichashmap_insert" /></p>
+
+<p>这里在查找key的时候使用了cas操作，以原子地对位置加锁，而在AtomicHashArray中每个key的状态有可能是Empty、Locked、Erased、真实的key，并且预留一定百分比的位置以缓冲，避免超过capacity。</p>
+
+<p>find</p>
+
+<p>过程如下：</p>
+
+<p>计算keyToAnchorIdx(key)的值，定位到对应的单元</p>
+
+<p>判断单元中存储的key</p>
+
+<pre><code>    Key=key_in：查找成功，返回单元中的元素
+
+    key≠key_in：
+
+        Key=Empty：查找失败
+
+        否则：查找下一个单元，直到找到元素或者超过capacity
+</code></pre>
+
+<p>erase</p>
+
+<p>操作与find一样，找到元素，标记为Erased</p>
+
+<p>其中find和erase是无等待的。</p>
+
+<p><strong>ConcurrentSkipList</strong></p>
+
+<p>这是一个支持并发的跳表，跳表是一个随机的链表结构，盗用网上的一张示意图对跳表进行描述</p>
+
+<p><img width="800px" src="/assets/images/2012/09/09/skiplist.png" alt="skiplist" /></p>
+
+<p>每个节点都是随机高度，当查找的时候从高往低查找，当一层失败的时候就降低一层查找，知道找到或者找到最低层。</p>
+
+<p>Folly中实现的跳表的特点和缺陷主要有</p>
+
+<p>特点：</p>
+
+<p>较小的内存开销：比std::set小了~40%
+Read操作时无锁几乎无等待的
+快速，多线程环境下比带有一个RWSpinLock的std::set快了10倍以上
+支持GC</p>
+
+<p>缺陷：</p>
+
+<p>写操作比std::set慢30%
+每一个跳表都需要一个4-word的头结点
+当元素个数较小（&lt;1000）时，比std::set慢
+只支持x64
+释放的节点不可被重用
+数据结构大致如下</p>
+
+<p><img width="800px" src="/assets/images/2012/09/09/ConcurrentSkipList.png" alt="ConcurrentSkipList" /></p>
+
+<p>保存了内存回收类和跳表的头结点，每个结点的结构如头结点所示，使用了一个spinlock来对结点加锁，同时GC类中也记录了结点数据和这个类的引用数，每次被引用refs增加一次，当调用release时，refs减少一次，当refs=1时调用release的时候结点被析构。</p>
+
+<p><strong>ProducerConsumerQueue</strong></p>
+
+<p>另外Folly实现了一个队列长度确定的无等待的单producer单consumer的生产者消费者队列，这个类的实现就相对比较简单。</p>
+
+<p>用一个定长的数组表示循环队列，当调用write的时候往队列尾写数据，若满则返回false</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">template</span>
+  <span class="kt">bool</span> <span class="nf">write</span><span class="p">(</span><span class="n">Args</span><span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">recordArgs</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="k">const</span> <span class="n">currentWrite</span> <span class="o">=</span> <span class="n">writeIndex_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+    <span class="k">auto</span> <span class="n">nextRecord</span> <span class="o">=</span> <span class="n">currentWrite</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nextRecord</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">nextRecord</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nextRecord</span> <span class="o">!=</span> <span class="n">readIndex_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">new</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">records_</span><span class="p">[</span><span class="n">currentWrite</span><span class="p">])</span> <span class="n">T</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="p">(</span><span class="n">recordArgs</span><span class="p">)...);</span>
+      <span class="n">writeIndex_</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="n">nextRecord</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>
+      <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="c1">// queue is full</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+  <span class="p">}</span></code></pre></div>
+
+<p>调用read读队列头的数据，若队列空则返回false</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="c1">// move (or copy) the value at the front of the queue to given variable</span>
+  <span class="kt">bool</span> <span class="nf">read</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">record</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="k">const</span> <span class="n">currentRead</span> <span class="o">=</span> <span class="n">readIndex_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">currentRead</span> <span class="o">==</span> <span class="n">writeIndex_</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">))</span> <span class="p">{</span>
+      <span class="c1">// queue is empty</span>
+      <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">auto</span> <span class="n">nextRecord</span> <span class="o">=</span> <span class="n">currentRead</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nextRecord</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">nextRecord</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">record</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">records_</span><span class="p">[</span><span class="n">currentRead</span><span class="p">]);</span>
+    <span class="n">records_</span><span class="p">[</span><span class="n">currentRead</span><span class="p">].</span><span class="o">~</span><span class="n">T</span><span class="p">();</span>
+    <span class="n">readIndex_</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="n">nextRecord</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+  <span class="p">}</span></code></pre></div>
+
+<p>由于C++11中对于内存读写顺序的方法的使用，对一些数据的原子读写就方便许多。</p>
+
+<p><strong>总结</strong></p>
+
+<p>Folly的多线程数据大致如上，线程局部变量ThreadLocal、原子递增变量ThreadCachedInt、线程安全原子哈希AtomicHashMap、并发的跳表ConcurrentSkipList、高性能的生产者消费者队列ProducerConsumerQueue，这些数据结构一方面在内存效率以及易用上有较大的优化，另外一方面也带来限制，如map中key的限制，对于元素个数的预估等，所以在一定条件下使用这些数据结构能够带来收益。</p>
+
+
+  <address class="signature">
+    <a class="author" href="/">chunmato</a> 
+    <span class="date">09 September 2012</span>
+    <span class="location"></span>
+  </address>
+  
+  <div class="prev-next">
+  
+    <a href="/2012/09/22/folly-multithread-locks" class="next" title="Folly源码分析(5) – 多线程锁">Next Post &rarr;</a>
+  
+  
+    <a href="/2012/08/20/folly-string" class="prev" title="Folly源码分析(2) – 字符串">&larr; Earlier Post</a>
+  
+  </div>
+  
+</div><!-- End Page -->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'jekyllbootstrap'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+
+
+  
+  <div id="footer">
+  	<address>
+  		<span class="engine">
+  			Powered by <a href="http://github.com/mojombo/jekyll/" title="A static, minimalist CMS">Jekyll</a>
+  		</span>
+  	</address>
+  </div>
+  
+</div>
+
+<!--[if IE 6]>
+<script type="text/javascript"> 
+	/*Load jQuery if not already loaded*/ if(typeof jQuery == 'undefined'){ document.write("<script type=\"text/javascript\"   src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js\"></"+"script>"); var __noconflict = true; } 
+	var IE6UPDATE_OPTIONS = {
+		icons_path: "http://static.ie6update.com/hosted/ie6update/images/"
+	}
+</script>
+<script type="text/javascript" src="http://static.ie6update.com/hosted/ie6update/ie6update.js"></script>
+<![endif]-->
+
+  
+</body>
+</html>
+

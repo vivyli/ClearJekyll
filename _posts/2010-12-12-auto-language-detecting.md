@@ -6,7 +6,7 @@ category: algorithm
 tags: [algorithm]
 ---
 {% include JB/setup %}
-Mozilla的自动编码检测代码参考了论文[《A composite approach to language/encoding detection》] (http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html)，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。
+Mozilla的自动编码检测代码参考了论文[《A composite approach to language/encoding detection》](http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html)，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。
 
 <!-- more -->
 

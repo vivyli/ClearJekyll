@@ -4,13 +4,703 @@
  <title>Notebook</title>
  <link href="http://chunmato.github.io/" rel="self"/>
  <link href="http://chunmato.github.io"/>
- <updated>2014-11-13T01:22:07+08:00</updated>
+ <updated>2014-11-13T23:11:00+08:00</updated>
  <id>http://chunmato.github.io</id>
  <author>
    <name>chunmato</name>
    <email>vivylics@gmail.com</email>
  </author>
 
+ 
+ <entry>
+   <title>Folly源码分析(5) – 多线程锁</title>
+   <link href="http://chunmato.github.io/2012/09/22/folly-multithread-locks"/>
+   <updated>2012-09-22T00:00:00+08:00</updated>
+   <id>http://chunmato.github.io/2012/09/22/folly-multithread-locks</id>
+   <content type="html">
+&lt;p&gt;Folly对多线程方面考虑地较多，串讲时候被告知其实现在每个产品都是这样的，对多线程的要求都非常高，Folly中的多线程中对于自旋锁（spinlock）特别实现了一下，实现了如下的自旋锁：&lt;/p&gt;
+
+&lt;p&gt;SmallLocks(MicroSpinLock、PicoSpinLock)：两个非常小的互斥量类型（1byte和1bit），主要用于highly memory-constrained环境&lt;/p&gt;
+
+&lt;p&gt;RWSpinLock(RWSpinLock、RWTicketSpinLock)：两个读写锁&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;MicroSpinLock&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;用一个byte表示锁（uint8_t），锁有两种状态，分别是FREE和LOCKED。&lt;/p&gt;
+
+&lt;p&gt;调用lock时，用一个while循环不断地尝试去获得锁（即调用try_lock），看是否可以将锁的状态置为LOCKED，对于获得锁的策略是&lt;/p&gt;
+
+&lt;p&gt;前4000次每次失败都调用pause，之后每次失败sleep 0.5ms&lt;/p&gt;
+
+&lt;p&gt;这样降低线程的上下文切换的开销。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;try_lock的实现是使用了汇编的cas操作，即compare and swap，在效率上比普通的做比较会高很多，代码如下&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;cas&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;uint8_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compare&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;uint8_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;newVal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;asm&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;volatile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;lock; cmpxchgb %2, (%3);&amp;quot;&lt;/span&gt;
+                 &lt;span class=&quot;s&quot;&gt;&amp;quot;setz %0;&amp;quot;&lt;/span&gt;
+                 &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;=r&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                 &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;a&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;compare&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// cmpxchgb constrains this to be in %al&lt;/span&gt;
+                   &lt;span class=&quot;s&quot;&gt;&amp;quot;q&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;newVal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Needs to be byte-accessible&lt;/span&gt;
+                   &lt;span class=&quot;s&quot;&gt;&amp;quot;r&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lock_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                 &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;memory&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;flags&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;PicoSpinLock&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;这也是一个自旋锁，提供了自旋锁的基本函数lock和unlock，另外它可以保存一个整型变量，提供了getData和setData来获得/设置保存在锁中的整数，前提是这个整数的最高位必须为0，以使用这个最高位作为锁的表示，即最高位是0表示FREE，为1表示LOCKED，如图示：&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/22/pico_spinlock.png&quot; alt=&quot;pico_spinlock&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;其他实现与MicroSpinLock相同，如try_lock用汇编的原子cas实现，尝试获得锁的策略。&lt;/p&gt;
+
+&lt;p&gt;这个锁的好处是在内存占用上几乎0消耗，因为一般无符号整型变量的最高位都是用不到的&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;RWSpinLock&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;一个读写锁，比pthread_rwlock快并且低开销，主要特点是：&lt;/p&gt;
+
+&lt;p&gt;当线程数量小于CPU数量的时候性能较好
+线程数量大的时候会导致写饥饿（写锁获得必须在读锁都释放之后才能被获得）
+最多支持2^30 – 1个reader
+在数据结构上，使用了一个32位的整型来表示这个锁，并有3个状态标记：写锁、更新锁、读锁，图示如下&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/22/RWSpinLock.png&quot; alt=&quot;RWSpinLock&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;写锁（Lockable）：只有在读、写、更新锁都没有的时候才能获得&lt;/p&gt;
+
+&lt;p&gt;在实现上，不断尝试申请写锁，多次失败（1000次），主动让出CPU，并且，以后的每次申请失败都让出CPU。&lt;/p&gt;
+
+&lt;p&gt;这样的优化的好处在于避免了频繁地切换上下文，但是却加剧了写饥饿，即在读者很多的情况下，写锁就非常难申请到，产生饥饿。&lt;/p&gt;
+
+&lt;p&gt;大致代码如下&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;lock&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;LIKELY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;try_lock&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sched_yield&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 1000次申请失败，调用sched_yield() 主动让出CPU&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;try_lock&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int32_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;expect&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bits_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;compare_exchange_strong&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;expect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;WRITER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_acq_rel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 原子操作，判断lock(bits_)是否是0，&lt;/span&gt;
+                                  &lt;span class=&quot;c1&quot;&gt;//只有在是0的时候也就是没有被获得任何锁的情况加才申请到写锁&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;读锁（SharedLockable）：没有写锁的时候可以获得&lt;/p&gt;
+
+&lt;p&gt;同样是不断尝试申请锁，多次申请失败让出CPU，当申请成功过的时候给lock加4，即在高30位的计数器上加1，当释放锁的时候减1。&lt;/p&gt;
+
+&lt;p&gt;大致代码如下&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;lock_shared&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;LIKELY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;try_lock_shared&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sched_yield&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;try_lock_shared&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// fetch_add 比 compare_exchange 快100%&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int32_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bits_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fetch_add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;READER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_acquire&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UNLIKELY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;WRITER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;bits_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fetch_add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;READER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_release&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;更新锁（Upgradable）：与读锁一样，但可以升级成写锁，或者降级成读锁，用于那种需要先做判断，才决定是否需要加写锁的场景&lt;/p&gt;
+
+&lt;p&gt;申请更新锁，同样多次申请失败（已经拥有更新锁或者写锁）让出CPU，能够被升级成写锁或者读锁，做法是先释放更新锁，再加锁，使用原子操作完成。&lt;/p&gt;
+
+&lt;p&gt;大致代码如下&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;lock_upgrade&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;try_lock_upgrade&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sched_yield&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+ &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;try_lock_upgrade&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int32_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bits_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fetch_or&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UPGRADED&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_acquire&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// 申请锁失败，不回滚UPGRADED位，因为已经有更新锁或者写锁了，如果只是写锁，当unlock的时候这个位会被清除&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UPGRADED&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;WRITER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;RWTicketSpinLock&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;RWSpinLock的问题是读写不平衡，在读者太多的时候，写锁就没办法获得了，RWTicketSpinLock一定程度上解决了这个不平衡的问题，解决方法为：&lt;/p&gt;
+
+&lt;p&gt;当有一个线程在等待写锁的时候，读锁是无法再被加上的，直到所有读锁被释放的时候，写锁就可以被加上，一定程度平衡了读写不平衡。&lt;/p&gt;
+
+&lt;p&gt;在实现上，使用了一个ticket，即32或者64位长度的union类型来做读、写锁的获得判断条件，如图示&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/22/RWTicketSpinLock.png&quot; alt=&quot;RWTicketSpinLock&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如代码&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;k&quot;&gt;union&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;RWTicket&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;FullInt&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;whole&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 用于整个数据的拷贝&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;HalfInt&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;readWrite&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 代表read和write数据&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;__extension__&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;QuarterInt&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;write&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 用于加锁限制的标记数据&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;QuarterInt&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+      &lt;span class=&quot;n&quot;&gt;QuarterInt&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;users&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+    &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ticket&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;读锁、写锁获得的条件过程大致如下（比较绕）&lt;/p&gt;
+
+&lt;p&gt;初始化&lt;/p&gt;
+
+&lt;p&gt;user=0、read=0、write=0&lt;/p&gt;
+
+&lt;p&gt;读锁&lt;/p&gt;
+
+&lt;p&gt;只有当users=read的时候，读锁才可以被加上，否则申请锁失败。
+读锁被加上后，read++，users++，封锁了写锁的申请，但是读锁还是可以申请
+Unlock的时候， write++
+写锁&lt;/p&gt;
+
+&lt;p&gt;只有当users=write的时候，写锁才可以被加上，否则申请锁失败。
+写锁被加上后，users++，封锁了读锁和写锁的申请
+Unlock的时候，read++，write++
+写锁等待&lt;/p&gt;
+
+&lt;p&gt;给users++，封锁了读锁的申请，然后等待user++之前的users==write的时候获取写锁。&lt;/p&gt;
+
+&lt;p&gt;自制算法示范举例图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/22/RWTicketSpinLock_Example.png&quot; alt=&quot;RWTicketSpinLock_Example&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在这个锁中做的优化大致有：&lt;/p&gt;
+
+&lt;p&gt;使用并行的SSE2并行指令，对多个连续地址的整数一个指令完成++操作
+使用Pause指令让出，一方面可以降低CPU能耗，另外可以帮助CPU优化指令。
+减少分支预测，令old.user=old.read，判断user和read是否相等的逻辑延迟到CAS操作。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;总结&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Folly中的SpinLock中MicroSpinLock和PicoSpinLock缩短了锁需要表示的长度，以节省内存空间，由于cas的使用在效率上也有一定的提升。&lt;/p&gt;
+
+&lt;p&gt;RWSpinLock在效率上由于上下文切换的开销降低，有一定的提高，但是却产生了饥饿问题，RWTicketSpinLock在获得写锁的时候封锁读锁的获得，一定程度上解决了读写不平衡的问题。&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Folly源码分析(4) – 多线程数据结构</title>
+   <link href="http://chunmato.github.io/2012/09/09/folly-multithread"/>
+   <updated>2012-09-09T00:00:00+08:00</updated>
+   <id>http://chunmato.github.io/2012/09/09/folly-multithread</id>
+   <content type="html">
+&lt;p&gt;Folly为多线程做了许多相关的组件和优化，例如之前介绍内存管理时的提到的ThreadCachedArena就为多线程的内存分配做优化，本文将会提到几个多线程相关的组件，如线程局部变量ThreadLocal、原子递增变量ThreadCachedInt、线程安全原子哈希AtomicHashMap、并发的跳表ConcurrentSkipList、高性能的生产者消费者队列ProducerConsumerQueue。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;ThreadLocal&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;线程局部变量是指只有在本线程中才能被访问到的数据，对于其他线程是屏蔽的，类似于线程范围的全局变量，如pthread_setspecific/pthread_getspecific实现了类似的功能。但是相比于pthread_setspecific/pthread_getspecific，ThreadLocal更为易用，只要定义ThreadLocalPtr&lt;xxx&gt;，这个对象就会为每个线程分配一个私有的变量，当线程退出的时候自动执行释放函数。&lt;/xxx&gt;&lt;/p&gt;
+
+&lt;p&gt;当然线程局部变量的一种替代解决方案是让线程访问一个全局变量，使线程内部的各个函数就能共享一个变量，这样的缺陷主要有1）当一个线程挂掉时影响到其他线程；2）数据同步影响效率；因此线程局部变量是一个很有用的东西。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;Folly对这个的类的优化主要有：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;定义了模版参数Tag，每个Tag只是用1个pthread_key_t，原因是一般来说pthread_key_t的个数是有限的，一般是1024个。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;开发人员可以指定线程退出时执行的函数和所有线程退出后执行的函数。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;提供了accessAllThreads来遍历所有线程中的局部变量，这个被用在ThreadCachedInt的获得较为准确的数据。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在Folly的文档中介绍了这个类的用法，例如&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;folly&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ThreadLocalPtr&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Widget&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Widget&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;customDeleterA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;kr&quot;&gt;thread&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Widget&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Widget&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;customDeleterB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mangleWidget&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Widget(1) is destroyed with customDeleterB&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Widget(0) is destroyed with customDeleterA&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// customDeleterB通过THIS_THREAD设定，当单个线程退出的时候调用&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// custonDeleterA通过ALL_THREAD设定，当所有线程退出的时候调用&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;使用accessAllThread遍历访问线程的私有数据&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SimpleThreadCachedInt&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;NewTag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// Segments the global mutex&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;ThreadLocal&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;val_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+ &lt;span class=&quot;k&quot;&gt;public&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;val&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;val_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;val&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// operator*() gives a reference to the thread local instance&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// accessAllThreads acquires the global lock&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;val_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;accessAllThreads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// Global lock is released on scope exit&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;ThreadLocal实现的数据结构大致如下&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/09/threadlocal.png&quot; alt=&quot;threadlocal&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;使用一个全局静态元数据StaticMeta保存了线程数据ThreadEntity的头指针和一些用于管理的数据，当一个线程启动时需要将数据加入到线程私有变量中去的时候，在head的指向的私有数据链表中，而实际的数据时保存在elements的ElementWrap的数组中，其中的ptr指向于真正的数据，而每个ElementWrap都可以指定自己的资源释放函数Deleter。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;ThreadCachedInt&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;这是一个整型的类，主要用于多线程同时操作一个自增的整型变量，在精度保证不丢失的情况下提供极高的性能，在测试获得的结果是，它比std::atomic_fetch_add快10倍。&lt;/p&gt;
+
+&lt;p&gt;提供了两种的对这个自增整型类的读取方式：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;readFast：速度很快（一个load指令得到的数据），但是数据有可能是以前的数据，即读到的数据比真是数据小，这种情况适用于对精度无太大要求，但是对效率要求很高的情况。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;readFull：速度相比于readFast慢，但是数据较为准确，做法事实上就是累加所有线程中的计数器和全局的计数器，在读取线程的数据的时候需要获得一个锁，因此效率比较差。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;这个类的数据结构示意图&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/09/threadcachedint.png&quot; alt=&quot;threadcachedint&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这个示意图也示意了这个类的实现过程，即保存一个类全局变量和线程私有变量val，是ThreadLocalPtr，这个类就是上面介绍的ThreadLocal，当线程中的val更新次数超过一定次数的时候，将本线程中的计数器val加到全局的targe_中，本身的val清零。&lt;/p&gt;
+
+&lt;p&gt;readFast直接读取target_的值&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;n&quot;&gt;IntT&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;readFast&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;target_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_relaxed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;readFull则需要累加所有的值&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;n&quot;&gt;IntT&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;readFull&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;IntT&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;readFast&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;cache&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;accessAllThreads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reset_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_acquire&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;val_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_relaxed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;AtomicHashMap&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;AtomicHashMap是一个几乎无锁的原子HashMap，几乎无所的意思是只有少量的几个方法是有锁的。&lt;/p&gt;
+
+&lt;p&gt;这个类的文档和源代码的注释中解释了这个类的有点和缺点，如下&lt;/p&gt;
+
+&lt;p&gt;优点：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;高性能，特别是在多线程要求非常高的环境中
+相比tbb::concurrent_has_map快2-5倍&lt;/li&gt;
+  &lt;li&gt;好的内存利用率，容量不过估的前提下
+良好的分散性能？（ Good fragmentation properties ）&lt;/li&gt;
+  &lt;li&gt;查找快速&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;缺陷：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Key只支持int32、int64，原因是需要执行无所的cas（compare and swap）操作&lt;/li&gt;
+  &lt;li&gt;必须指定empty、locked、erased的key，原因也是key的限制&lt;/li&gt;
+  &lt;li&gt;性能会随着初始尺寸的容量的增大线性降低，原因是其数据结构的submap的查找&lt;/li&gt;
+  &lt;li&gt;最大的size被限制在初始size的18倍&lt;/li&gt;
+  &lt;li&gt;擦除的内存块不被释放，而是被标记擦除，为了效率&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;数据结构如下&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/09/atomichashmap.png&quot; alt=&quot;atomichashmap&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;一个AtomicHashMap中最多包含16个subMap，subMap定义为AtomicHashArray，用数组实现的存储数据的hash 表。在初始化的时候只初始化1个SubMap，其他都置为null，当一个SubMap被放满时再初始化下一个SubMap。&lt;/p&gt;
+
+&lt;p&gt;主要方法的实现大致如下&lt;/p&gt;
+
+&lt;p&gt;Insert&lt;/p&gt;
+
+&lt;p&gt;从第一个SubMap查找位置，使用线性的解决冲突，即有冲突，不断找相邻的下一个位置，若满则找下一个，若全满，则申请新的SubMap，大小为&lt;/p&gt;
+
+&lt;p&gt;第一个SubMap的capacity * 1.8 ^ (nextIdx – 1)&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/09/atomichashmap_insert.png&quot; alt=&quot;atomichashmap_insert&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里在查找key的时候使用了cas操作，以原子地对位置加锁，而在AtomicHashArray中每个key的状态有可能是Empty、Locked、Erased、真实的key，并且预留一定百分比的位置以缓冲，避免超过capacity。&lt;/p&gt;
+
+&lt;p&gt;find&lt;/p&gt;
+
+&lt;p&gt;过程如下：&lt;/p&gt;
+
+&lt;p&gt;计算keyToAnchorIdx(key)的值，定位到对应的单元&lt;/p&gt;
+
+&lt;p&gt;判断单元中存储的key&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    Key=key_in：查找成功，返回单元中的元素
+
+    key≠key_in：
+
+        Key=Empty：查找失败
+
+        否则：查找下一个单元，直到找到元素或者超过capacity
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;erase&lt;/p&gt;
+
+&lt;p&gt;操作与find一样，找到元素，标记为Erased&lt;/p&gt;
+
+&lt;p&gt;其中find和erase是无等待的。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;ConcurrentSkipList&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;这是一个支持并发的跳表，跳表是一个随机的链表结构，盗用网上的一张示意图对跳表进行描述&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/09/skiplist.png&quot; alt=&quot;skiplist&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;每个节点都是随机高度，当查找的时候从高往低查找，当一层失败的时候就降低一层查找，知道找到或者找到最低层。&lt;/p&gt;
+
+&lt;p&gt;Folly中实现的跳表的特点和缺陷主要有&lt;/p&gt;
+
+&lt;p&gt;特点：&lt;/p&gt;
+
+&lt;p&gt;较小的内存开销：比std::set小了~40%
+Read操作时无锁几乎无等待的
+快速，多线程环境下比带有一个RWSpinLock的std::set快了10倍以上
+支持GC&lt;/p&gt;
+
+&lt;p&gt;缺陷：&lt;/p&gt;
+
+&lt;p&gt;写操作比std::set慢30%
+每一个跳表都需要一个4-word的头结点
+当元素个数较小（&amp;lt;1000）时，比std::set慢
+只支持x64
+释放的节点不可被重用
+数据结构大致如下&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;800px&quot; src=&quot;/assets/images/2012/09/09/ConcurrentSkipList.png&quot; alt=&quot;ConcurrentSkipList&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;保存了内存回收类和跳表的头结点，每个结点的结构如头结点所示，使用了一个spinlock来对结点加锁，同时GC类中也记录了结点数据和这个类的引用数，每次被引用refs增加一次，当调用release时，refs减少一次，当refs=1时调用release的时候结点被析构。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;ProducerConsumerQueue&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;另外Folly实现了一个队列长度确定的无等待的单producer单consumer的生产者消费者队列，这个类的实现就相对比较简单。&lt;/p&gt;
+
+&lt;p&gt;用一个定长的数组表示循环队列，当调用write的时候往队列尾写数据，若满则返回false&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;write&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Args&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;...&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;recordArgs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;currentWrite&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;writeIndex_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_relaxed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;currentWrite&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;size_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;readIndex_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_acquire&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;records_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;currentWrite&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;forward&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recordArgs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)...);&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;writeIndex_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_release&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;c1&quot;&gt;// queue is full&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;调用read读队列头的数据，若队列空则返回false&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// move (or copy) the value at the front of the queue to given variable&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;record&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;currentRead&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;readIndex_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_relaxed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;currentRead&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;writeIndex_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_acquire&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// queue is empty&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;currentRead&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;size_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;record&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;move&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;records_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;currentRead&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;records_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;currentRead&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;].&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;~&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;readIndex_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nextRecord&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;std&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;memory_order_release&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;由于C++11中对于内存读写顺序的方法的使用，对一些数据的原子读写就方便许多。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;总结&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Folly的多线程数据大致如上，线程局部变量ThreadLocal、原子递增变量ThreadCachedInt、线程安全原子哈希AtomicHashMap、并发的跳表ConcurrentSkipList、高性能的生产者消费者队列ProducerConsumerQueue，这些数据结构一方面在内存效率以及易用上有较大的优化，另外一方面也带来限制，如map中key的限制，对于元素个数的预估等，所以在一定条件下使用这些数据结构能够带来收益。&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Folly源码分析(2) – 字符串</title>
+   <link href="http://chunmato.github.io/2012/08/20/folly-string"/>
+   <updated>2012-08-20T00:00:00+08:00</updated>
+   <id>http://chunmato.github.io/2012/08/20/folly-string</id>
+   <content type="html">
+&lt;p&gt;本文主要介绍了Folly中两个字符串相关的类FBString和Range，主要是介绍FBString中的优化，Range不做具体介绍。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;FBString&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Folly实现了一个自己的字符串类fbstring，关于fbstring我之前看源代码的时候参考了博客园里的&lt;a href=&quot;http://www.cnblogs.com/promise6522/archive/2012/06/05/2535530.html&quot;&gt;一篇文章&lt;/a&gt;，讲的非常不错，所以我相当于是重复性劳动了。&lt;/p&gt;
+
+&lt;p&gt;fbstring兼容了std::string的接口，属于重新造轮子，但是做了性能上的优化，主要有如下优化：&lt;/p&gt;
+
+&lt;p&gt;内存模型&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;数据存储&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;内存分配&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;常用算法的优化&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;find算法&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;其他优化&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;&lt;strong&gt;数据存储&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;根据存储的string的size，分成三种存储方式：&lt;/p&gt;
+
+&lt;p&gt;Small：0-22个字符，存储到栈中，char[24]&lt;/p&gt;
+
+&lt;p&gt;Medium：23-254个字符，使用malloc分配内存，使用eager-copy方式，即字符串的复制总是重新分配并拷贝内容&lt;/p&gt;
+
+&lt;p&gt;Large：大于254个字符，存储方式与medium相同，在字符串之前存储了引用计数，使用lazy-copy，即copy-on-write，也就是说一般的引用只增加引用计数，只有在需要修改或者取下标操作的时候才对字符串进行copy，以减少内存拷贝的次数。&lt;/p&gt;
+
+&lt;p&gt;这样做的好处在于当字符串长度较小的时候，直接做栈操作，效率上会高很多，当字符串较长的时候，由于代价的考虑，不能做频繁的拷贝操作，因此使用了copy-on-write，但同时由于copy-on-write本身的缺陷，如多线程的时候会增加其内存拷贝次数等等，在中等长度的时候则不适用copy-on-write。（事实上高版本的string类已经不再使用copy-on-write了）&lt;/p&gt;
+
+&lt;p&gt;代码上的数据结构表示&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MediumLarge&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;Char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;size_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;capacity_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;capacity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;capacity_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;capacityExtractMask&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;union&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;mutable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;small_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MediumLarge&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Char&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)];&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;mutable&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MediumLarge&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ml_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;ml_的大小正好为24，在实际存储中，small_的最后一位存储字符串的长度，倒数第二位保留给’\0′，所以small的时候最长能保存22个字符，而medium和large使用了相同的数据结构，不同点事large之前会保存一个RefCount，它是一个std::atomic&lt;size_t&gt;的原子整型。&lt;/size_t&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;内存分配&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;内存分配方面的优化使用了上篇中讲的Malloc.h，即一方面做了64B/256B/4KB/4MB的内存申请的对齐，令一方面优化了realloc操作，在内存扩张的时候先判断是否使用了jemalloc，若未使用则根据内存占用率判断是否使用realloc，具体可见上篇Folly相关的文章的Malloc.h部分。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;find算法优化&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;std::string中的find算法使用了KMP查找算法，而在Folly中使用了一种简化的Boyer-Moore算法，测试显示当查找成功时相比string::find提高了30倍，失败时提高了1.5倍。&lt;/p&gt;
+
+&lt;p&gt;这个算法过程如下，举例说明&lt;/p&gt;
+
+&lt;p&gt;例如：ABCDEFABCDEFGEFG中查找DEFGE&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;目标字符串（DEFGE）的最后一个字符是E，lastNeedle=’E’，找到源字符串中第一个lastNededle的位置，ABCDEFABCDEFGEFG&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;从后往前比较，发现D!=G，因此不需要往前找，因为之前肯定不存在这个紫川，需要找下一个可能出现的地方。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;ABCDEFABCDEFGEFG&lt;/p&gt;
+
+&lt;p&gt;DEFGE&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;在这一步不是逐个找，而是跳过目标串中距离lastNeedle与lastNeedle相同的两个字母的距离，此处为两个E的距离，skip=3&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;跳过skip（3）的距离ABCDEFABCDEFGEFG，即从B开始找下一个lastNeedle（E），为ABCDEFABCDEFGEFG&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;不断循环查找，直到找到或者失败&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;ABCDEFABCDEFGEFG
+DEFGE&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;‘\0′的优化&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;对于字符串预留末尾的’\0’，只在调用c_str()或者data()的时候添加，在一般的操作中保留着一位，而不再做添加和删除，减少了操作无用字符的开销，提高一定的性能。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;word-wise copy&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;当是类型是small的时候，每次拷贝64bits数据，以提高拷贝的效率，如下&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;byteSize&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;c1&quot;&gt;// Copy three words&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;ml_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;capacity_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;reinterpret_cast&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+          &lt;span class=&quot;nl&quot;&gt;copyTwo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;ml_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;reinterpret_cast&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+          &lt;span class=&quot;nl&quot;&gt;copyOne&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;ml_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;reinterpret_cast&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const_cast&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;byteSize&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;c1&quot;&gt;// Copy two words&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;copyTwo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;c1&quot;&gt;// Copy one word&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;copyOne&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;小结&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;以上就是string类的几个主要的优化，总结一下主要的优化点是1）根据string的长短优化其存储方式；2）在内存realloc的时候做优化；3）常用算法上的优化&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Range&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;另外一个跟字符串有关的类是Range.h，这个类就没什么可写的，主要是封装了可随机访问的字符串StringPiece，与boost的Range相同，实现的目的是为了兼容接口。&lt;/p&gt;
+
+&lt;p&gt;实现方法是：&lt;/p&gt;
+
+&lt;p&gt;存储了两个指针b_和e_，分别为一个字符串片段的起始地址和结束地址，访问时访问地址偏移量&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Folly源码分析(1) – 内存管理</title>
+   <link href="http://chunmato.github.io/2012/08/18/folly-memory-management"/>
+   <updated>2012-08-18T00:00:00+08:00</updated>
+   <id>http://chunmato.github.io/2012/08/18/folly-memory-management</id>
+   <content type="html">
+&lt;p&gt;Folly中内存管理相关的类主要有Arena和ThreadCachedArena，另外针对内存申请做优化的是Malloc.h这个工具，本文主要对这三个类/工具做实现上的分析。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Arena&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Arena是一个类似于内存池的类，不同的是一般内存池都管理的被释放的内存，但是Arena无法释放内存，直到Arena本身被析构的时候才释放所有的内存块，这个类主要目的是作为ThreadCachedArena的实现。&lt;/p&gt;
+
+&lt;p&gt;它提供了三个接口：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;void* allocate(size_t size); //申请内存一块size大小的内存块，加入Arena的内存链表中&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;void merge(Arena&amp;amp;&amp;amp; other); //将另外一个Arena中的内存块合并到当前的Arena中&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;void deallocate(void* p); //为接口兼容，实际上不做任何操作&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;数据结构&lt;/p&gt;
+
+&lt;p&gt;内存的存放方式是使用了一个单向链表存储，cache了末端的节点&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c--&quot; data-lang=&quot;c++&quot;&gt;&lt;span class=&quot;k&quot;&gt;typedef&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;boost&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;intrusive&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;slist&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;Block&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;boost&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;intrusive&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;member_hook&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Block&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BlockLink&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Block&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;link&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;boost&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;intrusive&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;constant_time_size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;boost&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;intrusive&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cache_last&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BlockList&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;存储的结构如下&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;900px&quot; src=&quot;/assets/images/2012/08/18/arena.png&quot; alt=&quot;arena&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;以竖线为分界线，右边的都是定长（默认为4M）的内存块，左边为大于定长的内存块，ptr_和end_分别指向了链表末端的空闲块的开始和结束地址&lt;/p&gt;
+
+&lt;p&gt;分配内存&lt;/p&gt;
+
+&lt;p&gt;Arena的内存申请算法如下：&lt;/p&gt;
+
+&lt;p&gt;1.当申请的内存块的size小于链表末端的空闲空间（即end&lt;em&gt;-ptr&lt;/em&gt;），则直接插入到链表末端的空间（以加快内存分配），否则分配内存块&lt;/p&gt;
+
+&lt;p&gt;2.分配内存块：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;当申请的内存块的大小大于minBlockSize（4M），则直接插入到链表的前面&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;当申请的内存块的大小小于或者等于minBlockSize（4M），则插入到链表的末端，并调整ptr_和end_的指向，指向于(minBlockSize – size)&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;释放内存&lt;/p&gt;
+
+&lt;p&gt;调用deallocate不做任何操作，在调用~Arena()时，逐个析构链表中的内存块&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;ThreadCachedArena&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;ThreadCachedArena封装了Arena，用作多线程中的内存分配，主旨是在多线程中，每个线程都有自己的一个Arena来做内存分配和管理，同时线程共用成为zombie的Arena，当线程退出时，这个线程中的内存不做释放操作，而是merge到zombie中，直到所有的线程已经退出，ThreadCachedArena被析构时，zombie中存放的内存才被释放。&lt;/p&gt;
+
+&lt;p&gt;这样做都是为多线程环境的速度做考虑，线程申请内存不需要考虑线程同步，也减少了内存的释放操作，对性能有很大的提升。&lt;/p&gt;
+
+&lt;p&gt;其数据的示意图大致如下，每个线程中的Arena用Folly中的ThreadLocalPtr存放，其作用与pthread_getspecific类似，每个线程都是独立拥有一个对象。&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;900px&quot; src=&quot;/assets/images/2012/08/18/threadcachedarena.png&quot; alt=&quot;threadcachedarena&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Malloc.h&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;这是一个包装glibc的malloc、calloc、realloc的工具，它的主要优化是：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;对size做了goodMallocSize过滤，将size做64B/256B/4KB/4MB对齐，以减少内存碎片&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;实现smartRealloc函数，判断是否使用jemalloc，再做优化&lt;/p&gt;
+
+    &lt;p&gt;2.1 当使用了jemalloc的时候，用jemalloc的rallocm代替std的realloc方法（jemalloc是FreeBSD上默认的分配器，在多线程并发环境下表现更好）&lt;/p&gt;
+
+    &lt;p&gt;2.2 当没有使用jemallc，需要realloc的时候，根据内存块使用率，分情况处理处理，如示意图&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img width=&quot;900px&quot; src=&quot;/assets/images/2012/08/18/malloc.png&quot; alt=&quot;malloc&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;2.2.1 当内存使用率低于50%的时候，放弃使用realloc，因为realloc可能会拷贝整块内存，会导致效率低下，使用malloc-copy-free的方法，也就是先malloc一块大的内存，再把原内存中的数据copy过去，释放原内存&lt;/p&gt;
+
+&lt;p&gt;2.2.2 否则使用realloc，因为realloc有一定的可能性是会在当前内存之后扩展出一块内存，则而不需要拷贝整块内存；若realloc扩展内存失败，则会做malloc一块新的内存，把原内存块整块拷贝过去（包括使用的和未使用的）&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;小结&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Folly中的内存相关的类就是如上，Arena是针对了多线程环境中的内存分配做优化，块内空闲段的利用、减少内存释放次数、以及内存局部变量的方法提高内存分配/释放的速度。&lt;/p&gt;
+
+&lt;p&gt;Malloc.h主要是针对了glibc中realloc的缺陷做了优化，原因是在容器中往往是需要做realloc操作的，如vector、string等，一方面也是为多线程的性能考虑。&lt;/p&gt;
+
+&lt;p&gt;以上都是个人理解，如有错误，请及时想告。&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>Folly Overview</title>
@@ -344,7 +1034,7 @@
    <updated>2010-12-12T00:00:00+08:00</updated>
    <id>http://chunmato.github.io/algorithm/2010/12/12/auto-language-detecting</id>
    <content type="html">
-&lt;p&gt;Mozilla的自动编码检测代码参考了论文[《A composite approach to language/encoding detection》] (http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html)，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。&lt;/p&gt;
+&lt;p&gt;Mozilla的自动编码检测代码参考了论文&lt;a href=&quot;http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html&quot;&gt;《A composite approach to language/encoding detection》&lt;/a&gt;，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 

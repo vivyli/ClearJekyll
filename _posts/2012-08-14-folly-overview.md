@@ -3,7 +3,7 @@ layout: post
 title: "Folly Overview"
 description: ""
 category: c++
-tags: [c++]
+tags: [C++]
 ---
 {% include JB/setup %}
 

@@ -1,0 +1,227 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <title>Folly源码分析(1) – 内存管理</title>
+   <meta name="author" content="chunmato" />
+
+   <link rel="start" href="/" />
+
+	
+	
+	
+  	<link rel="alternate" type="application/atom+xml" href="http://feeds.feedburner.com/feedname" title="RSS feed" />
+	
+	
+
+   <!-- syntax highlighting CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/syntax.css" type="text/css" />
+
+   <!-- Homepage CSS -->
+   <link rel="stylesheet" href="/assets/themes/ClearJekyll/css/screen.css" type="text/css" />
+
+</head>
+<body>
+<div id="site">
+  
+  <div id="header">
+    <h1>
+    	<a href="/" title="Notebook" id="title">Notebook</a>
+    	<!--span class="byline">&larr; <a href="/">chunmato</a></span-->
+    </h1>
+    <ul class="nav">
+      <li><a class="home" href="/">Home</a></li>
+      <li><a  href="/archive.html">Archive</a></li>
+      <!--li><a  href="/pages.html">Pages</a></li-->
+      <li><a  href="/categories.html">Categories</a></li>
+      <li><a  href="/tags.html">Tags</a></li>
+    </ul>
+  </div>
+
+  
+<div id="page">
+	
+  <h1 class="emphnext">Folly源码分析(1) – 内存管理</h1>
+  <ul class="tag_box inline">
+  
+  
+
+
+  
+     
+    	<li><a href="/tags.html#C++-ref">C++ <span>5</span></a></li>
+    
+  
+
+
+
+  </ul>
+
+  
+<p>Folly中内存管理相关的类主要有Arena和ThreadCachedArena，另外针对内存申请做优化的是Malloc.h这个工具，本文主要对这三个类/工具做实现上的分析。</p>
+
+<p><strong>Arena</strong></p>
+
+<p>Arena是一个类似于内存池的类，不同的是一般内存池都管理的被释放的内存，但是Arena无法释放内存，直到Arena本身被析构的时候才释放所有的内存块，这个类主要目的是作为ThreadCachedArena的实现。</p>
+
+<p>它提供了三个接口：</p>
+
+<ul>
+  <li>
+    <p>void* allocate(size_t size); //申请内存一块size大小的内存块，加入Arena的内存链表中</p>
+  </li>
+  <li>
+    <p>void merge(Arena&amp;&amp; other); //将另外一个Arena中的内存块合并到当前的Arena中</p>
+  </li>
+  <li>
+    <p>void deallocate(void* p); //为接口兼容，实际上不做任何操作</p>
+  </li>
+</ul>
+
+<!-- more -->
+
+<p>数据结构</p>
+
+<p>内存的存放方式是使用了一个单向链表存储，cache了末端的节点</p>
+
+<div class="highlight"><pre><code class="language-c--" data-lang="c++"><span class="k">typedef</span> <span class="n">boost</span><span class="o">::</span><span class="n">intrusive</span><span class="o">::</span><span class="n">slist</span><span class="o">&lt;</span>
+    <span class="n">Block</span><span class="p">,</span>
+    <span class="n">boost</span><span class="o">::</span><span class="n">intrusive</span><span class="o">::</span><span class="n">member_hook</span><span class="o">&lt;&lt;</span><span class="n">Block</span><span class="p">,</span> <span class="n">BlockLink</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">Block</span><span class="o">::</span><span class="n">link</span><span class="p">;</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">boost</span><span class="o">::</span><span class="n">intrusive</span><span class="o">::</span><span class="n">constant_time_size</span><span class="o">&lt;</span><span class="nb">false</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">boost</span><span class="o">::</span><span class="n">intrusive</span><span class="o">::</span><span class="n">cache_last</span><span class="o">&lt;</span><span class="nb">true</span><span class="o">&gt;&gt;</span> <span class="n">BlockList</span><span class="p">;</span></code></pre></div>
+
+<p>存储的结构如下</p>
+
+<p><img width="900px" src="/assets/images/2012/08/18/arena.png" alt="arena" /></p>
+
+<p>以竖线为分界线，右边的都是定长（默认为4M）的内存块，左边为大于定长的内存块，ptr_和end_分别指向了链表末端的空闲块的开始和结束地址</p>
+
+<p>分配内存</p>
+
+<p>Arena的内存申请算法如下：</p>
+
+<p>1.当申请的内存块的size小于链表末端的空闲空间（即end<em>-ptr</em>），则直接插入到链表末端的空间（以加快内存分配），否则分配内存块</p>
+
+<p>2.分配内存块：</p>
+
+<ul>
+  <li>
+    <p>当申请的内存块的大小大于minBlockSize（4M），则直接插入到链表的前面</p>
+  </li>
+  <li>
+    <p>当申请的内存块的大小小于或者等于minBlockSize（4M），则插入到链表的末端，并调整ptr_和end_的指向，指向于(minBlockSize – size)</p>
+  </li>
+</ul>
+
+<p>释放内存</p>
+
+<p>调用deallocate不做任何操作，在调用~Arena()时，逐个析构链表中的内存块</p>
+
+<p><strong>ThreadCachedArena</strong></p>
+
+<p>ThreadCachedArena封装了Arena，用作多线程中的内存分配，主旨是在多线程中，每个线程都有自己的一个Arena来做内存分配和管理，同时线程共用成为zombie的Arena，当线程退出时，这个线程中的内存不做释放操作，而是merge到zombie中，直到所有的线程已经退出，ThreadCachedArena被析构时，zombie中存放的内存才被释放。</p>
+
+<p>这样做都是为多线程环境的速度做考虑，线程申请内存不需要考虑线程同步，也减少了内存的释放操作，对性能有很大的提升。</p>
+
+<p>其数据的示意图大致如下，每个线程中的Arena用Folly中的ThreadLocalPtr存放，其作用与pthread_getspecific类似，每个线程都是独立拥有一个对象。</p>
+
+<p><img width="900px" src="/assets/images/2012/08/18/threadcachedarena.png" alt="threadcachedarena" /></p>
+
+<p><strong>Malloc.h</strong></p>
+
+<p>这是一个包装glibc的malloc、calloc、realloc的工具，它的主要优化是：</p>
+
+<ol>
+  <li>对size做了goodMallocSize过滤，将size做64B/256B/4KB/4MB对齐，以减少内存碎片</li>
+  <li>
+    <p>实现smartRealloc函数，判断是否使用jemalloc，再做优化</p>
+
+    <p>2.1 当使用了jemalloc的时候，用jemalloc的rallocm代替std的realloc方法（jemalloc是FreeBSD上默认的分配器，在多线程并发环境下表现更好）</p>
+
+    <p>2.2 当没有使用jemallc，需要realloc的时候，根据内存块使用率，分情况处理处理，如示意图</p>
+  </li>
+</ol>
+
+<p><img width="900px" src="/assets/images/2012/08/18/malloc.png" alt="malloc" /></p>
+
+<p>2.2.1 当内存使用率低于50%的时候，放弃使用realloc，因为realloc可能会拷贝整块内存，会导致效率低下，使用malloc-copy-free的方法，也就是先malloc一块大的内存，再把原内存中的数据copy过去，释放原内存</p>
+
+<p>2.2.2 否则使用realloc，因为realloc有一定的可能性是会在当前内存之后扩展出一块内存，则而不需要拷贝整块内存；若realloc扩展内存失败，则会做malloc一块新的内存，把原内存块整块拷贝过去（包括使用的和未使用的）</p>
+
+<p><strong>小结</strong></p>
+
+<p>Folly中的内存相关的类就是如上，Arena是针对了多线程环境中的内存分配做优化，块内空闲段的利用、减少内存释放次数、以及内存局部变量的方法提高内存分配/释放的速度。</p>
+
+<p>Malloc.h主要是针对了glibc中realloc的缺陷做了优化，原因是在容器中往往是需要做realloc操作的，如vector、string等，一方面也是为多线程的性能考虑。</p>
+
+<p>以上都是个人理解，如有错误，请及时想告。</p>
+
+
+  <address class="signature">
+    <a class="author" href="/">chunmato</a> 
+    <span class="date">18 August 2012</span>
+    <span class="location"></span>
+  </address>
+  
+  <div class="prev-next">
+  
+    <a href="/2012/08/20/folly-string" class="next" title="Folly源码分析(2) – 字符串">Next Post &rarr;</a>
+  
+  
+    <a href="/c++/2012/08/14/folly-overview" class="prev" title="Folly Overview">&larr; Earlier Post</a>
+  
+  </div>
+  
+</div><!-- End Page -->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'jekyllbootstrap'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+
+
+  
+  <div id="footer">
+  	<address>
+  		<span class="engine">
+  			Powered by <a href="http://github.com/mojombo/jekyll/" title="A static, minimalist CMS">Jekyll</a>
+  		</span>
+  	</address>
+  </div>
+  
+</div>
+
+<!--[if IE 6]>
+<script type="text/javascript"> 
+	/*Load jQuery if not already loaded*/ if(typeof jQuery == 'undefined'){ document.write("<script type=\"text/javascript\"   src=\"http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js\"></"+"script>"); var __noconflict = true; } 
+	var IE6UPDATE_OPTIONS = {
+		icons_path: "http://static.ie6update.com/hosted/ie6update/images/"
+	}
+</script>
+<script type="text/javascript" src="http://static.ie6update.com/hosted/ie6update/ie6update.js"></script>
+<![endif]-->
+
+  
+</body>
+</html>
+

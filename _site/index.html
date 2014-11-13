@@ -48,6 +48,148 @@
 <ul class="posts">
   
     <!--li>
+    <!span>22 Sep 2012</span> &raquo; <a href="/2012/09/22/folly-multithread-locks">Folly源码分析(5) – 多线程锁</a>
+    
+    </li-->
+    <div class="post">
+        <h3 class="ntitle">
+        <a href="/2012/09/22/folly-multithread-locks" class="ntitle">Folly源码分析(5) – 多线程锁</a>
+        <span class="date"> 22 Sep 2012</span>
+        </h3>
+
+        <span> 
+<p>Folly对多线程方面考虑地较多，串讲时候被告知其实现在每个产品都是这样的，对多线程的要求都非常高，Folly中的多线程中对于自旋锁（spinlock）特别实现了一下，实现了如下的自旋锁：</p>
+
+<p>SmallLocks(MicroSpinLock、PicoSpinLock)：两个非常小的互斥量类型（1byte和1bit），主要用于highly memory-constrained环境</p>
+
+<p>RWSpinLock(RWSpinLock、RWTicketSpinLock)：两个读写锁</p>
+
+<p><strong>MicroSpinLock</strong></p>
+
+<p>用一个byte表示锁（uint8_t），锁有两种状态，分别是FREE和LOCKED。</p>
+
+<p>调用lock时，用一个while循环不断地尝试去获得锁（即调用try_lock），看是否可以将锁的状态置为LOCKED，对于获得锁的策略是</p>
+
+<p>前4000次每次失败都调用pause，之后每次失败sleep 0.5ms</p>
+
+<p>这样降低线程的上下文切换的开销。</p>
+
+</span>
+        <span class="readmore"><a href="/2012/09/22/folly-multithread-locks"> &gt;&gt; Read More</a></span>
+     
+
+    </div>
+  
+    <!--li>
+    <!span>09 Sep 2012</span> &raquo; <a href="/2012/09/09/folly-multithread">Folly源码分析(4) – 多线程数据结构</a>
+    
+    </li-->
+    <div class="post">
+        <h3 class="ntitle">
+        <a href="/2012/09/09/folly-multithread" class="ntitle">Folly源码分析(4) – 多线程数据结构</a>
+        <span class="date"> 09 Sep 2012</span>
+        </h3>
+
+        <span> 
+<p>Folly为多线程做了许多相关的组件和优化，例如之前介绍内存管理时的提到的ThreadCachedArena就为多线程的内存分配做优化，本文将会提到几个多线程相关的组件，如线程局部变量ThreadLocal、原子递增变量ThreadCachedInt、线程安全原子哈希AtomicHashMap、并发的跳表ConcurrentSkipList、高性能的生产者消费者队列ProducerConsumerQueue。</p>
+
+<p><strong>ThreadLocal</strong></p>
+
+<p>线程局部变量是指只有在本线程中才能被访问到的数据，对于其他线程是屏蔽的，类似于线程范围的全局变量，如pthread_setspecific/pthread_getspecific实现了类似的功能。但是相比于pthread_setspecific/pthread_getspecific，ThreadLocal更为易用，只要定义ThreadLocalPtr<xxx>，这个对象就会为每个线程分配一个私有的变量，当线程退出的时候自动执行释放函数。</xxx></p>
+
+<p>当然线程局部变量的一种替代解决方案是让线程访问一个全局变量，使线程内部的各个函数就能共享一个变量，这样的缺陷主要有1）当一个线程挂掉时影响到其他线程；2）数据同步影响效率；因此线程局部变量是一个很有用的东西。</p>
+
+</span>
+        <span class="readmore"><a href="/2012/09/09/folly-multithread"> &gt;&gt; Read More</a></span>
+     
+
+    </div>
+  
+    <!--li>
+    <!span>20 Aug 2012</span> &raquo; <a href="/2012/08/20/folly-string">Folly源码分析(2) – 字符串</a>
+    
+    </li-->
+    <div class="post">
+        <h3 class="ntitle">
+        <a href="/2012/08/20/folly-string" class="ntitle">Folly源码分析(2) – 字符串</a>
+        <span class="date"> 20 Aug 2012</span>
+        </h3>
+
+        <span> 
+<p>本文主要介绍了Folly中两个字符串相关的类FBString和Range，主要是介绍FBString中的优化，Range不做具体介绍。</p>
+
+<p><strong>FBString</strong></p>
+
+<p>Folly实现了一个自己的字符串类fbstring，关于fbstring我之前看源代码的时候参考了博客园里的<a href="http://www.cnblogs.com/promise6522/archive/2012/06/05/2535530.html">一篇文章</a>，讲的非常不错，所以我相当于是重复性劳动了。</p>
+
+<p>fbstring兼容了std::string的接口，属于重新造轮子，但是做了性能上的优化，主要有如下优化：</p>
+
+<p>内存模型</p>
+
+<ul>
+  <li>
+    <p>数据存储</p>
+  </li>
+  <li>
+    <p>内存分配</p>
+  </li>
+</ul>
+
+<p>常用算法的优化</p>
+
+<ul>
+  <li>
+    <p>find算法</p>
+  </li>
+  <li>
+    <p>其他优化</p>
+  </li>
+</ul>
+
+</span>
+        <span class="readmore"><a href="/2012/08/20/folly-string"> &gt;&gt; Read More</a></span>
+     
+
+    </div>
+  
+    <!--li>
+    <!span>18 Aug 2012</span> &raquo; <a href="/2012/08/18/folly-memory-management">Folly源码分析(1) – 内存管理</a>
+    
+    </li-->
+    <div class="post">
+        <h3 class="ntitle">
+        <a href="/2012/08/18/folly-memory-management" class="ntitle">Folly源码分析(1) – 内存管理</a>
+        <span class="date"> 18 Aug 2012</span>
+        </h3>
+
+        <span> 
+<p>Folly中内存管理相关的类主要有Arena和ThreadCachedArena，另外针对内存申请做优化的是Malloc.h这个工具，本文主要对这三个类/工具做实现上的分析。</p>
+
+<p><strong>Arena</strong></p>
+
+<p>Arena是一个类似于内存池的类，不同的是一般内存池都管理的被释放的内存，但是Arena无法释放内存，直到Arena本身被析构的时候才释放所有的内存块，这个类主要目的是作为ThreadCachedArena的实现。</p>
+
+<p>它提供了三个接口：</p>
+
+<ul>
+  <li>
+    <p>void* allocate(size_t size); //申请内存一块size大小的内存块，加入Arena的内存链表中</p>
+  </li>
+  <li>
+    <p>void merge(Arena&amp;&amp; other); //将另外一个Arena中的内存块合并到当前的Arena中</p>
+  </li>
+  <li>
+    <p>void deallocate(void* p); //为接口兼容，实际上不做任何操作</p>
+  </li>
+</ul>
+
+</span>
+        <span class="readmore"><a href="/2012/08/18/folly-memory-management"> &gt;&gt; Read More</a></span>
+     
+
+    </div>
+  
+    <!--li>
     <!span>14 Aug 2012</span> &raquo; <a href="/c++/2012/08/14/folly-overview">Folly Overview</a>
     
     </li-->
@@ -175,7 +317,7 @@
         </h3>
 
         <span> 
-<p>Mozilla的自动编码检测代码参考了论文[《A composite approach to language/encoding detection》] (http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html)，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。</p>
+<p>Mozilla的自动编码检测代码参考了论文<a href="http://www-archive.mozilla.org/projects/intl/UniversalCharsetDetection.html">《A composite approach to language/encoding detection》</a>，今天正好把这篇文章读了一下。文中总结了自动语言/编码检测的三种算法，做了比较，并提出了一个结合三种方法的算法。</p>
 
 </span>
         <span class="readmore"><a href="/algorithm/2010/12/12/auto-language-detecting"> &gt;&gt; Read More</a></span>
